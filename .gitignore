@@ -1,0 +1,12 @@
+__pycache__/
+cogs/private/
+.vscode/
+static/
+migrations/
+prefixes.json
+*.log
+config.py
+blacklist.json
+dunston_b.json
+cogs/testing.py
+vwoes.json
