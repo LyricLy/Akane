@@ -2074,7 +2074,7 @@ class Mod(commands.Cog):
 
         reason = f"Self-mute for {ctx.author} (ID: {ctx.author.id}) for {delta}"
         await ctx.author.add_roles(discord.Object(id=role_id), reason=reason)
-        timer = await reminder.create_timer(
+        await reminder.create_timer(
             duration.dt,
             "tempmute",
             ctx.guild.id,
@@ -2229,7 +2229,7 @@ class Mod(commands.Cog):
                     overwrites.pop(to_unblock)
                 except KeyError:
                     continue
-                await channel.edit(overwrites=overwrites)
+                await channel.edit(overwrites=overwrites, reason=reason)
             except Exception as err:
                 real_exc = traceback.print_exception(
                     type(err), err, err.__traceback__, 4
@@ -2256,7 +2256,7 @@ class Mod(commands.Cog):
                 ow.pop(member)
                 await channel.edit(overwrites=ow, reason=reason)
                 success += 1
-            except Exception as err:
+            except Exception:
                 failed += 1
 
         await ctx.send(f"\N{THUMBS UP SIGN} Succeeded: {success}, Failed: {failed}.")

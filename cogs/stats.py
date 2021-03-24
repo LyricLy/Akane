@@ -216,7 +216,6 @@ class Stats(commands.Cog):
         """
         counter = self.bot.command_stats
         width = len(max(counter, key=len))
-        total = sum(counter.values())
 
         if limit > 0:
             common = counter.most_common(limit)
