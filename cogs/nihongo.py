@@ -446,7 +446,7 @@ class Nihongo(commands.Cog):
             if response.status == 200:
                 data = (await response.json())["data"]
             else:
-                raise commands.BadArgument("Not a valid query for Jisho.")
+                data = []
             if not data:
                 raise commands.BadArgument("Not a valid query for Jisho.")
 
