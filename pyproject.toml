@@ -3,7 +3,7 @@ name = "Akane"
 version = "0.2.0"
 description = "A general purpose and fun Discord bot."
 authors = ["AbstractUmbra <Umbra@AbstractUmbra.xyz>"]
-license = "MIT"
+license = "MPL 2.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
