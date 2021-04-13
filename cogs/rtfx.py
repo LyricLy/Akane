@@ -283,14 +283,12 @@ class RTFX(commands.Cog):
         e.colour = self.bot.colour["dsc"]
         await ctx.send(embed=e)
 
-    @commands.group(name="rtfs", invoke_without_command=True)
+    @commands.command(name="rtfs")
     async def rtfs(self, ctx: Context, *, target: SourceConverter = None) -> None:
         if target is None:
-            cmds = self.rtfs.commands
-            names = [cmd.name for cmd in cmds]
             return await ctx.send(
                 embed=discord.Embed(
-                    title="Available sources of rtfs", description="\n".join(names)
+                    title="Available sources of rtfs", description="\n".join(RTFS)
                 )
             )
 
