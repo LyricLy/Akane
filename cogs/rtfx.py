@@ -4,16 +4,64 @@ License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 """
 
+from __future__ import annotations
+
+import inspect
 import io
 import os
 import re
+import sys
 import zlib
-from asyncio import TimeoutError
+from typing import TYPE_CHECKING
 
+import asyncpg
 import discord
-from aiohttp import ClientTimeout
-from discord.ext import commands
+from discord.ext import commands, menus, tasks
 from utils import fuzzy
+from utils.context import Context
+from utils.formats import to_codeblock
+
+RTFS = (
+    "discord",
+    "discord.ext.commands",
+    "discord.ext.tasks",
+    "discord.ext.menus",
+    "asyncpg",
+)
+
+if TYPE_CHECKING:
+    from bot import Akane
+
+
+class BadSource(commands.CommandError):
+    pass
+
+
+class SourceConverter(commands.Converter):
+    async def convert(self, ctx: Context, argument: str) -> str:
+        args = argument.split(".")
+        top_level = args[0]
+        if top_level in ("commands", "menus", "tasks"):
+            top_level = f"discord.ext.{top_level}"
+
+        if top_level not in RTFS:
+            raise BadSource(f"`{top_level}` is not an allowed sourceable module.")
+
+        recur = sys.modules[top_level]
+
+        if len(args) == 1:
+            return inspect.getsource(recur)
+
+        for item in args[1:]:
+            if item == "":
+                raise BadSource("Don't even try.")
+
+            recur = getattr(recur, item)
+
+            if recur is None:
+                raise BadSource(f"{argument} is not a valid module path.")
+
+        return inspect.getsource(recur)
 
 
 class SphinxObjectFileReader:
@@ -47,12 +95,12 @@ class SphinxObjectFileReader:
             pos = buf.find(b"\n")
             while pos != -1:
                 yield buf[:pos].decode("utf-8")
-                buf = buf[pos + 1:]
+                buf = buf[pos + 1 :]
                 pos = buf.find(b"\n")
 
 
 class RTFX(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Akane):
         self.bot = bot
 
     def parse_object_inv(self, stream, url):
@@ -63,8 +111,8 @@ class RTFX(commands.Cog):
         # first line is version info
         inv_version = stream.readline().rstrip()
 
-        # if inv_version != "# Sphinx inventory version 2":
-        #     raise RuntimeError("Invalid objects.inv file version.")
+        if inv_version != "# Sphinx inventory version 2":
+            raise RuntimeError("Invalid objects.inv file version.")
 
         # next line is "# Project: <name>"
         # then after that is "# Version: <version>"
@@ -83,7 +131,7 @@ class RTFX(commands.Cog):
             if not match:
                 continue
 
-            name, directive, _, location, dispname = match.groups()
+            name, directive, prio, location, dispname = match.groups()
             domain, _, subdirective = directive.partition(":")
             if directive == "py:module" and name in result:
                 # From the Sphinx Repository:
@@ -113,7 +161,7 @@ class RTFX(commands.Cog):
     async def build_rtfm_lookup_table(self, page_types):
         cache = {}
         for key, page in page_types.items():
-            # sub = cache[key] = {}
+            _ = cache[key] = {}
             async with self.bot.session.get(page + "/objects.inv") as resp:
                 if resp.status != 200:
                     raise RuntimeError(
@@ -127,12 +175,12 @@ class RTFX(commands.Cog):
 
     async def do_rtfm(self, ctx, key, obj):
         page_types = {
-            "discord.py": "https://discordpy.readthedocs.io/en/latest/",
-            "discord.py-jp": "https://discordpy.readthedocs.io/ja/latest/",
+            "discord.py": "https://discordpy.readthedocs.io/en/latest",
+            "discord.py-jp": "https://discordpy.readthedocs.io/ja/latest",
             "python": "https://docs.python.org/3",
             "python-jp": "https://docs.python.org/ja/3",
-            "asyncpg": "https://magicstack.github.io/asyncpg/current/",
-            "aiohttp": "https://docs.aiohttp.org/en/stable/",
+            "asyncpg": "https://magicstack.github.io/asyncpg/current",
+            "aiohttp": "https://docs.aiohttp.org/en/stable",
         }
 
         if obj is None:
@@ -235,37 +283,28 @@ class RTFX(commands.Cog):
         e.colour = self.bot.colour["dsc"]
         await ctx.send(embed=e)
 
-    @commands.command()
-    async def rtfs(self, ctx, *, search: str):
-        """ Read the fuckin' source of discord.py. """
-        embed = discord.Embed(
-            title="Read the f*ckin source", colour=self.bot.colour["dsc"]
-        )
-        timeout = ClientTimeout(5)
-        try:
-            async with self.bot.session.get(
-                f"https://rtfs.eviee.me/dpy?search={search}", timeout=timeout
-            ) as resp:
-                results = await resp.json()
-        except TimeoutError:
+    @commands.group(name="rtfs", invoke_without_command=True)
+    async def rtfs(self, ctx: Context, *, target: SourceConverter = None) -> None:
+        if target is None:
+            cmds = self.rtfs.commands
+            names = [cmd.name for cmd in cmds]
             return await ctx.send(
-                "API is down, go look yourself lmao: <https://github.com/Rapptz/discord.py>"
+                embed=discord.Embed(
+                    title="Available sources of rtfs", description="\n".join(names)
+                )
             )
-        if not results:
-            embed.title = "Couldn't find anything."
-        else:
-            embed.title = f"RTFS for '{search}'"
-            embed.description = "\n".join(
-                f"[`{result['module']}.{result['object']}`]({result['url']})"
-                for result in results[:10]
-            )
-            eviee = (
-                self.bot.get_user(402159684724719617) or "Eviee#0666"
-            )  # just in case ;q
-            embed.set_footer(
-                text=f"Requested by {ctx.author} | Thank you {eviee} for the API."
-            )
-        return await ctx.send(embed=embed)
+
+        if len(target) >= 1990:
+            paste = await ctx.bot.mb_client.post(target, syntax="py")
+            return await ctx.send(paste.url)
+
+        await ctx.send(to_codeblock(target, language="py", escape_md=False))
+
+    @rtfs.error
+    async def rtfs_error(self, ctx: Context, error: commands.CommandError) -> None:
+        error = getattr(error, "original", error)
+
+        await ctx.send(str(error))
 
 
 def setup(bot):
