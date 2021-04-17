@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional, Set, Union
 
 import discord
 from discord.ext import commands
+
 from utils import db, formats
 from utils.context import Context
 
@@ -36,7 +37,9 @@ class PerformanceMocker:
     def __init__(self) -> None:
         self.loop = asyncio.get_event_loop()
 
-    def permissions_for(self, obj: Union[discord.Role, discord.Member]) -> discord.Permissions:
+    def permissions_for(
+        self, obj: Union[discord.Role, discord.Member]
+    ) -> discord.Permissions:
         """ Lying about permissions to embed, only temporarily. """
         # This makes it so pagination sessions just abruptly end on __init__
         # Most checks based on permission have a bypass for the owner anyway

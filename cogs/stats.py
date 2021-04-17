@@ -26,6 +26,7 @@ import pkg_resources
 import psutil
 import pygit2
 from discord.ext import commands, tasks
+
 from utils import db, formats, time
 
 log = logging.getLogger(__name__)
@@ -94,9 +95,7 @@ class Stats(commands.Cog):
         self._gateway_queue = asyncio.Queue(loop=bot.loop)
         self.gateway_worker.start()
 
-        # This is a datetime list
         self._resumes = []
-        # shard_id: List[datetime]
         self._identifies = defaultdict(list)
 
     def _clear_gateway_data(self):

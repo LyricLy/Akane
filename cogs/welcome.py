@@ -6,6 +6,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import discord
 from discord.ext import commands
+
 from utils import db
 
 
@@ -62,6 +63,8 @@ class Welcome(commands.Cog):
         """ Command. Let's have a look at your active help message. """
         query = "SELECT * FROM welcome_config WHERE guild_id = $1"
         record = await self.bot.pool.fetchrow(query, ctx.guild.id)
+        if record is None:
+            return await ctx.send("No welcome channel set up.")
         channel = ctx.guild.get_channel(record["welcome_channel"])
 
         if not channel:

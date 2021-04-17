@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import asyncpg
 import discord
 from discord.ext import commands, menus, tasks
+
 from utils import fuzzy
 from utils.context import Context
 from utils.formats import to_codeblock
@@ -56,10 +57,13 @@ class SourceConverter(commands.Converter):
             if item == "":
                 raise BadSource("Don't even try.")
 
-            recur = getattr(recur, item)
+            recur = inspect.getattr_static(recur, item, None)
 
             if recur is None:
                 raise BadSource(f"{argument} is not a valid module path.")
+
+        if isinstance(recur, property):
+            recur = recur.fget
 
         return inspect.getsource(recur)
 

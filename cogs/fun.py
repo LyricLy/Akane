@@ -15,22 +15,24 @@ import time
 from functools import partial
 from string import ascii_lowercase
 from textwrap import fill
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import discord
 import googletrans
 from discord.ext import commands, tasks
-from lru import LRU
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
 from utils import db, lang
-from utils.checks import can_use_spoiler
 from utils.context import Context
 from utils.formats import plural
 
 if TYPE_CHECKING:
     from bot import Akane
 
-ABT_REG = "~([a-zA-Z]+)~"
+ABT_REG = re.compile(r"~([a-zA-Z]+)~")
+MESSAGE_LINK_RE = re.compile(
+    r"^(?:https?://)(?:(?:canary|ptb)\.)?discord(?:app)?\.com/channels/(?P<guild>\d{16,20})/(?P<channel>\d{16,20})/(?P<message>\d{16,20})/?$"
+)
 
 MENTION_CHANNEL_ID = 722930330897743894
 DM_CHANNEL_ID = 722930296756109322
@@ -103,18 +105,6 @@ class SpoilerCache:
         return embed
 
 
-class SpoilerCooldown(commands.CooldownMapping):
-    def __init__(self):
-        super().__init__(commands.Cooldown(1, 10.0, commands.BucketType.user))
-
-    def _bucket_key(self, tup):
-        return tup
-
-    def is_rate_limited(self, message_id, user_id):
-        bucket = self.get_bucket((message_id, user_id))
-        return bucket.update_rate_limit() is not None
-
-
 class Fun(commands.Cog):
     """ Some fun stuff, not fleshed out yet. """
 
@@ -131,176 +121,63 @@ class Fun(commands.Cog):
         self.command_count = 0
         self.bulk_update.start()
         self.translator = googletrans.Translator()
-        self._spoiler_cache = LRU(128)
-        self._spoiler_cooldown = SpoilerCooldown()
 
-    async def do_ocr(self, url: str) -> Optional[str]:
-        async with self.bot.session.get(
-            "https://api.tsu.sh/google/ocr", params={"q": url}
-        ) as resp:
-            # data = await resp.json()
-            data = await resp.text()
-            return data
-        ocr_text = data.get("text")
-        ocr_text = (
-            ocr_text
-            if (len(ocr_text) < 4000)
-            else str(await self.bot.mb_client.post(ocr_text))
-        )
-        return ocr_text
+    # @commands.Cog.listener("on_message")
+    async def quote(self, message: discord.Message) -> None:
+        """"""
+        if message.author.bot or message.embeds or message.guild is None:
+            return
 
-    async def redirect_post(self, ctx, title, text):
-        storage = self.bot.get_guild(705500489248145459).get_channel(772045165049020416)
+        perms = message.channel.permissions_for(message.guild.me)
+        if perms.send_messages is False or perms.embed_links is False:
+            return
 
-        supported_attachments = (
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".webm",
-            ".gif",
-            ".mp4",
-            ".txt",
-        )
-        if not all(
-            attach.filename.lower().endswith(supported_attachments)
-            for attach in ctx.message.attachments
-        ):
-            raise RuntimeError(
-                f'Unsupported file in attachments. Only {", ".join(supported_attachments)} supported.'
+        if not (
+            match := re.search(
+                MESSAGE_LINK_RE,
+                message.content,
             )
-
-        files = []
-        total_bytes = 0
-        eight_mib = 8 * 1024 * 1024
-        for attach in ctx.message.attachments:
-            async with ctx.session.get(attach.url) as resp:
-                if resp.status != 200:
-                    continue
-
-                content_length = int(resp.headers.get("Content-Length"))
-
-                # file too big, skip it
-                if (total_bytes + content_length) > eight_mib:
-                    continue
-
-                total_bytes += content_length
-                fp = io.BytesIO(await resp.read())
-                files.append(discord.File(fp, filename=attach.filename))
-
-            if total_bytes >= eight_mib:
-                break
-
-        # on mobile, messages that are deleted immediately sometimes persist client side
-        await asyncio.sleep(0.2, loop=self.bot.loop)
-        await ctx.message.delete()
-        data = discord.Embed(title=title)
-        if text:
-            data.description = text
-
-        data.set_author(name=ctx.author.id)
-        data.set_footer(text=ctx.channel.id)
-
-        try:
-            message = await storage.send(embed=data, files=files)
-        except discord.HTTPException as e:
-            raise RuntimeError(
-                f"Sorry. Could not store message due to {e.__class__.__name__}: {e}."
-            ) from e
-
-        to_dict = {
-            "author_id": ctx.author.id,
-            "channel_id": ctx.channel.id,
-            "attachments": message.attachments,
-            "title": title,
-            "text": text,
-        }
-
-        cache = SpoilerCache(to_dict)
-        return message, cache
-
-    async def get_spoiler_cache(self, channel_id, message_id):
-        try:
-            return self._spoiler_cache[message_id]
-        except KeyError:
-            pass
-
-        storage = self.bot.get_guild(182325885867786241).get_channel(430229522340773899)
-
-        # slow path requires 2 lookups
-        # first is looking up the message_id of the original post
-        # to get the embed footer information which points to the storage message ID
-        # the second is getting the storage message ID and extracting the information from it
-        channel = self.bot.get_channel(channel_id)
-        if not channel:
-            return None
-
-        try:
-            original_message = await channel.fetch_message(message_id)
-            storage_message_id = int(original_message.embeds[0].footer.text)
-            message = await storage.fetch_message(storage_message_id)
-        except:
-            # this message is probably not the proper format or the storage died
-            return None
-
-        data = message.embeds[0]
-        to_dict = {
-            "author_id": int(data.author.name),
-            "channel_id": int(data.footer.text),
-            "attachments": message.attachments,
-            "title": data.title,
-            "text": None if not data.description else data.description,
-        }
-        cache = SpoilerCache(to_dict)
-        self._spoiler_cache[message_id] = cache
-        return cache
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        if payload.emoji.id != SPOILER_EMOJI_ID:
+        ):
             return
 
-        user = self.bot.get_user(payload.user_id)
-        if not user or user.bot:
+        data = match.groupdict()
+        guild_id = int(data["guild"])
+        channel_id = int(data["channel"])
+        message_id = int(data["message"])
+
+        if guild_id != message.guild.id:
             return
 
-        if self._spoiler_cooldown.is_rate_limited(payload.message_id, payload.user_id):
+        channel = message.guild.get_channel(channel_id)
+        if channel is None:
+            # deleted or private?
             return
-
-        cache = await self.get_spoiler_cache(payload.channel_id, payload.message_id)
-        embed = cache.to_embed(self.bot)
-        await user.send(embed=embed)
-
-    @commands.command()
-    @can_use_spoiler()
-    async def spoiler(self, ctx, title, *, text=None):
-        """Marks your post a spoiler with a title.
-
-        Once your post is marked as a spoiler it will be
-        automatically deleted and the bot will DM those who
-        opt-in to view the spoiler.
-
-        The only media types supported are png, gif, jpeg, mp4,
-        and webm.
-
-        Only 8MiB of total media can be uploaded at once.
-        Sorry, Discord limitation.
-
-        To opt-in to a post's spoiler you must click the reaction.
-        """
-
-        if len(title) > 100:
-            return await ctx.send("Sorry. Title has to be shorter than 100 characters.")
 
         try:
-            storage_message, cache = await self.redirect_post(ctx, title, text)
-        except Exception as e:
-            return await ctx.send(str(e))
+            quote_message = await channel.fetch_message(message_id)
+        except discord.HTTPException:
+            # Bot has no access I guess.
+            return
 
-        spoiler_message = await ctx.send(
-            embed=cache.to_spoiler_embed(ctx, storage_message)
+        embed = discord.Embed(
+            title=f"Quote from {quote_message.author} in {channel.name}"
         )
-        self._spoiler_cache[spoiler_message.id] = cache
-        await spoiler_message.add_reaction("<:QuestionMaybe:738038828928860269>")
+        embed.set_author(
+            name=quote_message.author.name, icon_url=quote_message.author.avatar_url
+        )
+        embed.description = quote_message.content or "No message content."
+        fmt = "This message had:\n"
+        if quote_message.embeds:
+            fmt += "one or more Embeds\n"
+        if quote_message.attachments:
+            fmt += "one or more Attachments\n"
+
+        if len(fmt.split("\n")) >= 3:
+            embed.add_field(name="Also...", value=fmt)
+
+        embed.timestamp = quote_message.created_at
+
+        await message.channel.send(embed=embed)
 
     @commands.group(invoke_without_command=True, skip_extra=False)
     async def abt(self, ctx, *, content: commands.clean_content):
@@ -332,28 +209,6 @@ class Fun(commands.Cog):
             else:
                 new_str += char
         await ctx.send(new_str.replace("~", "").capitalize())
-
-    @commands.command(hidden=True, enabled=False)
-    async def ocr(self, ctx, *, image_url: str = None):
-        """ Perform an OCR task on an image. """
-        if not image_url and not ctx.message.attachments:
-            raise commands.BadArgument("Url or attachment required.")
-        image_url = image_url or ctx.message.attachments[0].url
-        data = await self.do_ocr(image_url) or "No text returned."
-        await ctx.send(
-            embed=discord.Embed(description=data, colour=self.bot.colour["dsc"])
-        )
-
-    @commands.command(hidden=True, enabled=False)
-    async def ocrt(self, ctx, *, image_url: str = None):
-        """ Perform an OCR and translation on an image. """
-        if not image_url and not ctx.message.attachments:
-            raise commands.BadArgument("URL or attachment required.")
-        image_url = image_url or ctx.message.attachments[0].url
-        data = await self.do_ocr(image_url)
-        if data:
-            return await self.translate(ctx, message=data)
-        return await ctx.send("No text returned.")
 
     @commands.command()
     async def translate(self, ctx, *, message: commands.clean_content):

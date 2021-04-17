@@ -14,6 +14,7 @@ from typing import Union
 
 import discord
 from discord.ext import commands
+
 from utils import checks, formats, time
 
 
@@ -554,13 +555,13 @@ class Meta(commands.Cog):
 
     @commands.command(name="msgraw", aliases=["msgr", "rawm"])
     @commands.cooldown(1, 15, commands.BucketType.user)
-    async def raw_message(self, ctx, message_id: int):
+    async def raw_message(self, ctx, message: discord.Message):
         """ Quickly return the raw content of the specific message. """
         try:
-            msg = await ctx.bot.http.get_message(ctx.channel.id, message_id)
+            msg = await ctx.bot.http.get_message(message.channel.id, message.id)
         except discord.NotFound as err:
             raise commands.BadArgument(
-                f"Message with the ID of {message_id} cannot be found in {ctx.channel.mention}."
+                f"Message with the ID of {message.id} cannot be found in {message.channel.mention}."
             ) from err
 
         await ctx.send(

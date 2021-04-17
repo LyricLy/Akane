@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Union
 
 import discord
 from discord.ext import commands
+
 from utils.formats import plural, to_codeblock
 
 DICE_RE = re.compile(r"^(?P<rolls>\d+)[dD](?P<die>\d+)$")

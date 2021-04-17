@@ -25,6 +25,7 @@ import discord
 import pykakasi
 from discord.ext import commands, menus
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
 from utils.context import Context
 from utils.converters import MemeDict
 from utils.formats import plural, to_codeblock
@@ -63,7 +64,7 @@ JLPT_LOOKUP = MemeDict(
 class JLPTConverter(commands.Converter):
     async def convert(self, ctx: Context, argument: str) -> IO:
         try:
-            return JLPT_LOOKUP[argument.lower()]
+            return JLPT_LOOKUP[argument.lower().strip()]
         except KeyError:
             raise commands.BadArgument("Invalid key for JLPT level.")
 

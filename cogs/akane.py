@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 import discord
 from discord.ext import commands, tasks
 from jishaku.codeblocks import codeblock_converter
+
 from utils.context import Context
 from utils.formats import to_codeblock
 
@@ -92,6 +93,7 @@ class AkaneCore(commands.Cog, name="Akane"):
             "author": ctx.author,
             "bot": ctx.bot,
             "channel": ctx.channel,
+            "message": ctx.message,
             "discord": discord,
             "commands": commands,
         }

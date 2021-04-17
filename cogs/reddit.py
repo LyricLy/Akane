@@ -10,6 +10,7 @@ from textwrap import shorten
 
 import discord
 from discord.ext import commands, menus
+
 from utils.paginator import RoboPages
 
 

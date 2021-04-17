@@ -7,7 +7,7 @@ license = "MPL 2.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-"discord.py" = {git = "https://github.com/Rapptz/discord.py", rev = "master"}
+"discord.py" = ">=1.7.0"
 discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus", rev = "master"}
 jishaku = {git = "https://github.com/Gorialis/jishaku", rev = "master"}
 asyncpg = "*"
@@ -17,10 +17,9 @@ click = "*"
 parsedatetime = "*"
 lru_dict = "*"
 lxml = "*"
-pytz = "*"
+pytz = "^2021.1"
 python-dateutil = "*"
 fuzzywuzzy = "*"
-pygit2 = "*"
 "mystbin.py" = "*"
 feedparser = "*"
 CurrencyConverter = "*"
@@ -29,10 +28,12 @@ nhentaio = "*"
 pykakasi = "*"
 beautifulsoup4 = "*"
 Pillow = "*"
+pygit2 = "^1.5.0"
 
 [tool.poetry.dev-dependencies]
 black = "*"
 flake8 = "*"
+isort = "^5.8.0"
 
 [build-system]
 requires = ["poetry>=0.12"]

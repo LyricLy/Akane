@@ -18,9 +18,10 @@ from collections import Counter, defaultdict
 import asyncpg
 import discord
 from discord.ext import commands, tasks
+
 from utils import cache, checks, db, time
-from utils.formats import plural
 from utils.context import Context
+from utils.formats import plural
 
 log = logging.getLogger(__name__)
 
@@ -869,14 +870,10 @@ class Mod(commands.Cog):
     @checks.has_permissions(ban_members=True)
     async def massban(self, ctx, *, args):
         """Mass bans multiple members from the server.
-
         This command has a powerful "command line" syntax. To use this command
         you and the bot must both have Ban Members permission. **Every option is optional.**
-
         Users are only banned **if and only if** all conditions are met.
-
         The following options are valid.
-
         `--channel` or `-c`: Channel to search for message history.
         `--reason` or `-r`: The reason for the ban.
         `--regex`: Regex that usernames must match.
@@ -887,9 +884,7 @@ class Mod(commands.Cog):
         `--no-avatar`: Matches users who have no avatar. (no arguments)
         `--no-roles`: Matches users that have no role. (no arguments)
         `--show`: Show members instead of banning them (no arguments).
-
         Message history filters (Requires `--channel`):
-
         `--contains`: A substring to search for in the message.
         `--starts`: A substring to search if the message starts with.
         `--ends`: A substring to search if the message ends with.
@@ -976,7 +971,12 @@ class Mod(commands.Cog):
                 if all(p(message) for p in predicates):
                     members.append(message.author)
         else:
-            members = ctx.guild.members
+            if ctx.guild.chunked:
+                members = ctx.guild.members
+            else:
+                async with ctx.typing():
+                    await ctx.guild.chunk(cache=True)
+                members = ctx.guild.members
 
         # member filters
         predicates = [
@@ -986,16 +986,7 @@ class Mod(commands.Cog):
             lambda m: m.discriminator != "0000",  # No deleted users
         ]
 
-        async def _resolve_member(member_id):
-            r = ctx.guild.get_member(member_id)
-            if r is None:
-                try:
-                    return await ctx.guild.fetch_member(member_id)
-                except discord.HTTPException as e:
-                    raise commands.BadArgument(
-                        f"Could not fetch member by ID {member_id}: {e}"
-                    ) from None
-            return r
+        converter = commands.MemberConverter()
 
         if args.regex:
             try:
@@ -1023,13 +1014,13 @@ class Mod(commands.Cog):
 
             def joined(member, *, offset=now - datetime.timedelta(minutes=args.joined)):
                 if isinstance(member, discord.User):
-                    # They already left
+                    # If the member is a user then they left already
                     return True
                 return member.joined_at and member.joined_at > offset
 
             predicates.append(joined)
         if args.joined_after:
-            _joined_after_member = await _resolve_member(args.joined_after)
+            _joined_after_member = await converter.convert(ctx, str(args.joined_after))
 
             def joined_after(member, *, _other=_joined_after_member):
                 return (
@@ -1040,7 +1031,9 @@ class Mod(commands.Cog):
 
             predicates.append(joined_after)
         if args.joined_before:
-            _joined_before_member = await _resolve_member(args.joined_before)
+            _joined_before_member = await converter.convert(
+                ctx, str(args.joined_before)
+            )
 
             def joined_before(member, *, _other=_joined_before_member):
                 return (
@@ -1139,7 +1132,7 @@ class Mod(commands.Cog):
             title="Moderation action: Unban", colour=discord.Colour(0x000001)
         )
         embed.timestamp = datetime.datetime.utcnow()
-        embed.add_field(name="Target", value=member.name)
+        embed.add_field(name="Target", value=member.user.name)
         if member.reason:
             embed.set_footer(text=reason)
         else:
@@ -2093,7 +2086,7 @@ class Mod(commands.Cog):
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("Missing a duration to selfmute for.")
 
-    @commands.command(enabled=True)
+    @commands.command(enabled=False)
     @commands.guild_only()
     @commands.bot_has_guild_permissions(ban_members=True)
     async def selfban(self, ctx):
@@ -2239,10 +2232,11 @@ class Mod(commands.Cog):
                     wh = stats.webhook
                     await wh.send(f"```py\n{real_exc}\n```")
 
-
     @commands.command()
     @commands.has_guild_permissions(manage_roles=True)
-    async def unblock(self, ctx: Context, member: discord.Member, channel: discord.TextChannel = None):
+    async def unblock(
+        self, ctx: Context, member: discord.Member, channel: discord.TextChannel = None
+    ):
         channels = [channel] if channel else ctx.guild.text_channels
 
         reason = f"Unblock by {ctx.author} (ID: {ctx.author.id})"
@@ -2260,7 +2254,6 @@ class Mod(commands.Cog):
                 failed += 1
 
         await ctx.send(f"\N{THUMBS UP SIGN} Succeeded: {success}, Failed: {failed}.")
-
 
 
 def setup(bot):

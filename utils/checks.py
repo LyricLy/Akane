@@ -11,7 +11,9 @@ from discord.ext import commands
 from utils.context import Context
 
 
-async def check_permissions(ctx: Context, perms: Dict[str, bool], *, check: Callable = all) -> bool:
+async def check_permissions(
+    ctx: Context, perms: Dict[str, bool], *, check: Callable = all
+) -> bool:
     is_owner = await ctx.bot.is_owner(ctx.author)
     if is_owner:
         return True
@@ -29,7 +31,9 @@ def has_permissions(*, check: Callable = all, **perms) -> commands.check:
     return commands.check(pred)
 
 
-async def check_guild_permissions(ctx: Context, perms: Dict[str, bool], *, check: Callable = all) -> bool:
+async def check_guild_permissions(
+    ctx: Context, perms: Dict[str, bool], *, check: Callable = all
+) -> bool:
     is_owner = await ctx.bot.is_owner(ctx.author)
     if is_owner:
         return True

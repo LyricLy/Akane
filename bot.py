@@ -27,7 +27,7 @@ from utils.config import Config
 from utils.context import Context
 
 if TYPE_CHECKING:
-    from asyncpg.pool import Pool
+    from asyncpg import Pool
 
 DESCRIPTION = """
 Hello! I am a bot written by Umbreon#0009 to provide some nice utilities.

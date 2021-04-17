@@ -132,6 +132,7 @@ def escape_invis(decode_error):
 
 codecs.register_error("escape-invis", escape_invis)
 
+
 def escape_invis_chars(content):
     """Escape invisible/control characters."""
     return content.encode("ascii", "escape-invis").decode("utf-8")

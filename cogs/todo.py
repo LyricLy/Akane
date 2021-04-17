@@ -11,6 +11,7 @@ from textwrap import shorten
 import asyncpg
 import discord
 from discord.ext import commands, menus
+
 from utils import db
 from utils.paginator import RoboPages
 

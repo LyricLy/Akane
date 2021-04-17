@@ -14,6 +14,7 @@ from discord.ext.commands import Paginator as CommandPaginator
 class RoboPages(menus.MenuPages, inherit_buttons=False):
     def __init__(self, source, *args, **kwargs):
         super().__init__(source=source, check_embeds=True, *args, **kwargs)
+        self.input_lock = asyncio.Lock()
 
     async def finalize(self, timed_out):
         try:
@@ -56,32 +57,38 @@ class RoboPages(menus.MenuPages, inherit_buttons=False):
         "<:RR:785742013089185812>", position=menus.Last(1), skip_if=_skip_when
     )
     async def ff(self, payload: discord.RawReactionActionEvent):
-        print("fuck")
         await self.show_page(self._source.get_max_pages() - 1)
 
     @menus.button(
-        "<:1234:787170360013225996>", position=menus.Last(2), skip_if=_skip_when
+        "<:1234:787170360013225996>",
+        position=menus.Last(2),
+        skip_if=_skip_when,
+        lock=False,
     )
-    async def jump_to(self, payload):
-        m = await self.message.channel.send("Which page would you like to go to?")
-        try:
-            n = await self.bot.wait_for(
-                "message",
-                check=lambda m: m.author == self.ctx.author
-                and m.channel == self.ctx.channel
-                and m.content.isdigit(),
-                timeout=30,
-            )
-        except asyncio.TimeoutError:
+    async def jump_to(self, payload: discord.RawReactionActionEvent):
+        if self.input_lock.locked():
             return
-        else:
-            await self.show_page(int(n.content))
-        finally:
-            await m.delete()
+
+        async with self.input_lock:
+            m = await self.message.channel.send("Which page would you like to go to?")
             try:
-                await n.delete()
-            except discord.Forbidden:
-                pass
+                n = await self.bot.wait_for(
+                    "message",
+                    check=lambda m: m.author == self.ctx.author
+                    and m.channel == self.ctx.channel
+                    and m.content.isdigit(),
+                    timeout=30,
+                )
+            except asyncio.TimeoutError:
+                return
+            else:
+                await self.show_page(int(n.content))
+            finally:
+                await m.delete()
+                try:
+                    await n.delete()
+                except discord.Forbidden:
+                    pass
 
 
 class FieldPageSource(menus.ListPageSource):
