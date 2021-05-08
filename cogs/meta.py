@@ -536,7 +536,7 @@ class Meta(commands.Cog):
     @commands.command(name="pm", hidden=True)
     @commands.is_owner()
     async def _pm(self, ctx, user_id: int, *, content: str):
-        """ PMs requested users. """
+        """PMs requested users."""
         user = self.bot.get_user(user_id)
 
         fmt = (
@@ -556,7 +556,7 @@ class Meta(commands.Cog):
     @commands.command(name="msgraw", aliases=["msgr", "rawm"])
     @commands.cooldown(1, 15, commands.BucketType.user)
     async def raw_message(self, ctx, message: discord.Message):
-        """ Quickly return the raw content of the specific message. """
+        """Quickly return the raw content of the specific message."""
         try:
             msg = await ctx.bot.http.get_message(message.channel.id, message.id)
         except discord.NotFound as err:

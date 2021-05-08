@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 from collections import namedtuple
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
@@ -15,8 +16,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
 import discord
 import nhentaio
 from aiohttp import BasicAuth
-from asyncpg import Connection
-from asyncpg.pool import Pool
+from asyncpg import Connection, Pool, Record
 from discord.ext import commands, menus
 
 from utils import cache, checks, db
@@ -27,12 +27,13 @@ from utils.paginator import RoboPages
 if TYPE_CHECKING:
     from bot import Akane
 
+SIX_DIGITS = re.compile(r"\{(\d{6})\}")
 RATING = {"e": "explicit", "q": "questionable", "s": "safe"}
 Booru = namedtuple("Booru", "auth endpoint")
 
 
 class BlacklistedBooru(commands.CommandError):
-    """ Error raised when you request a blacklisted tag. """
+    """Error raised when you request a blacklisted tag."""
 
     def __init__(self, tags: set):
         self.blacklisted_tags = tags
@@ -44,7 +45,7 @@ class BlacklistedBooru(commands.CommandError):
 
 
 class BadNHentaiID(commands.CommandError):
-    """ Error raised when you request a blacklisted tag. """
+    """Error raised when you request a blacklisted tag."""
 
     def __init__(self, hentai_id: int, message: str):
         self.nhentai_id = hentai_id
@@ -54,29 +55,47 @@ class BadNHentaiID(commands.CommandError):
         return f"Invalid NHentai ID: `{self.nhentai_id}`."
 
 
+class NHentaiEmbed(discord.Embed):
+    @classmethod
+    def from_gallery(cls, gallery: nhentaio.Gallery) -> NHentaiEmbed:
+        self = cls(title=gallery.title, url=gallery.url)
+        self.timestamp = gallery.uploaded
+        self.add_field(name="Page count", value=gallery.page_count)
+        self.add_field(name="Local name", value="N/A")
+        self.add_field(name="# of favourites", value=gallery.favourites)
+        self.set_image(url=gallery.cover.url)
+
+        return self
+
+
 class BooruConfigTable(db.Table, table_name="booru_config"):
-    """ Database ORM fun. """
+    """Database ORM fun."""
 
     guild_id = db.Column(db.Integer(big=True), primary_key=True)
     blacklist = db.Column(db.Array(db.String()))
+    auto_six_digits = db.Column(db.Boolean)
 
 
 class BooruConfig:
-    """ Config object per guild. """
+    """Config object per guild."""
 
-    def __init__(self, *, guild_id: int, bot: Akane, record=None):
+    __slots__ = ("guild_id", "bot", "record", "blacklist", "auto_six_digits")
+
+    def __init__(self, *, guild_id: int, bot: Akane, record: Optional[Record] = None):
         self.guild_id = guild_id
         self.bot = bot
         self.record = record
 
         if record:
             self.blacklist = set(record["blacklist"])
+            self.auto_six_digits = record["auto_six_digits"]
         else:
             self.blacklist = set()
+            self.auto_six_digits = False
 
 
 class LewdPageSource(menus.ListPageSource):
-    """ Page source for Menus. """
+    """Page source for Menus."""
 
     def __init__(self, entries: Sequence[Any], *, per_page: int = 1):
         self.entries = entries
@@ -87,10 +106,10 @@ class LewdPageSource(menus.ListPageSource):
 
 
 class GelbooruEntry:
-    """ Quick object namespace. """
+    """Quick object namespace."""
 
     def __init__(self, payload: dict):
-        """ . """
+        """."""
         self.image = True if (payload["width"] != 0) else False
         self.source = payload.get("source")
         self.gb_id = payload.get("id")
@@ -128,7 +147,7 @@ class DanbooruEntry:
 
 
 class Lewd(commands.Cog):
-    """ Lewd cog. """
+    """Lewd cog."""
 
     def __init__(self, bot: Akane) -> None:
         self.bot = bot
@@ -169,13 +188,15 @@ class Lewd(commands.Cog):
         guild_id: int,
         *,
         connection: Union[Pool, Connection] = None,
-    ):
+    ) -> BooruConfig:
         connection = connection or self.bot.pool
         query = """ SELECT * FROM gelbooru_config WHERE guild_id = $1; """
         record = await connection.fetchrow(query, guild_id)
         return BooruConfig(guild_id=guild_id, bot=self.bot, record=record)
 
-    def _gen_gelbooru_embeds(self, payloads: list, config: BooruConfig):
+    def _gen_gelbooru_embeds(
+        self, payloads: list, config: BooruConfig
+    ) -> List[Optional[discord.Embed]]:
         embeds = []
         safe_results: List[GelbooruEntry] = []
         blacklisted_tags = config.blacklist
@@ -254,7 +275,7 @@ class Lewd(commands.Cog):
     @commands.cooldown(1, 10, commands.BucketType.user)
     @commands.max_concurrency(1, commands.BucketType.user, wait=False)
     @commands.is_nsfw()
-    async def gelbooru(self, ctx: Context, *, params: str):
+    async def gelbooru(self, ctx: Context, *, params: str) -> None:
         """This command uses a flag style syntax.
         The following options are valid.
 
@@ -428,14 +449,14 @@ class Lewd(commands.Cog):
     @commands.group(invoke_without_command=True)
     @checks.has_permissions(manage_messages=True)
     async def booru(self, ctx: Context) -> None:
-        """ Booru commands! Please see the subcommands. """
+        """Booru commands! Please see the subcommands."""
         if not ctx.invoked_subcommand:
             return await ctx.send_help(ctx.command)
 
     @booru.group(invoke_without_command=True)
     @checks.has_permissions(manage_messages=True)
     async def blacklist(self, ctx: Context) -> None:
-        """ Blacklist management for gelbooru command. """
+        """Blacklist management for gelbooru command."""
         if not ctx.invoked_subcommand:
             config = await self.get_booru_config(ctx.guild.id)
             if config.blacklist:
@@ -451,7 +472,7 @@ class Lewd(commands.Cog):
     @blacklist.command()
     @checks.has_permissions(manage_messages=True)
     async def add(self, ctx: Context, *tags: str):
-        """ Add an item to the blacklist. """
+        """Add an item to the blacklist."""
         query = """ INSERT INTO gelbooru_config (guild_id, blacklist)
                     VALUES ($1, $2)
                     ON CONFLICT (guild_id)
@@ -465,7 +486,7 @@ class Lewd(commands.Cog):
     @blacklist.command()
     @checks.has_permissions(manage_messages=True)
     async def remove(self, ctx: Context, *tags: str):
-        """ Remove an item from the blacklist. """
+        """Remove an item from the blacklist."""
         query = """ UPDATE gelbooru_config
                     SET blacklist = array_remove(gelbooru_config.blacklist, $2)
                     WHERE guild_id = $1;
@@ -480,19 +501,61 @@ class Lewd(commands.Cog):
     @commands.max_concurrency(1, commands.BucketType.user, wait=False)
     @commands.is_nsfw()
     async def nhentai(self, ctx, hentai_id: int):
-        """ Naughty. Return info. the cover and links to an nhentai page. """
+        """Naughty. Return info. the cover and links to an nhentai page."""
         gallery: Optional[
             nhentaio.Gallery
         ] = await self.bot.hentai_client.fetch_gallery(hentai_id)
+
         if not gallery:
             raise BadNHentaiID(hentai_id, "Doesn't seem to be a valid ID.")
-        embed = discord.Embed(title=gallery.title, url=gallery.url)
-        embed.add_field(name="Page count", value=gallery.page_count)
-        embed.add_field(name="Local name", value="N/A")
-        embed.timestamp = gallery.uploaded
-        embed.add_field(name="# of Favourites", value=gallery.favourites)
-        embed.set_image(url=gallery.cover.url)
+
+        embed = NHentaiEmbed.from_gallery(gallery)
         await ctx.send(embed=embed)
+
+    @nhentai.command(name="toggle")
+    @checks.has_guild_permissions(manage_messages=True)
+    async def nhentai_toggle(self, ctx: Context) -> None:
+        config: BooruConfig = await self.get_booru_config(ctx.guild.id)
+        if not config:
+            return await ctx.send("No recorded config for this guild.")
+
+        enabled = config.auto_six_digits
+
+        query = """
+                --begin-sql
+                UPDATE gelbooru_config
+                SET auto_six_digits = $2
+                WHERE guild_id = $1;
+                """
+        await ctx.bot.pool.execute(query, ctx.guild.id, not enabled)
+        self.get_booru_config.invalidate(self, ctx.guild.id)
+        await ctx.message.add_reaction(ctx.bot.emoji[True])
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        if not message.guild or message.webhook_id:
+            return
+
+        if not message.channel.is_nsfw():
+            return
+
+        config: BooruConfig = await self.get_booru_config(message.guild.id)
+        if config.auto_six_digits is False:
+            return
+
+        if not (match := SIX_DIGITS.match(message.content)):
+            return
+
+        digits = int(match[1])
+
+        gallery: Optional[
+            nhentaio.Gallery
+        ] = await self.bot.hentai_client.fetch_gallery(digits)
+        if not gallery:
+            return
+
+        embed = NHentaiEmbed.from_gallery(gallery)
+        await message.reply(embed=embed)
 
 
 def setup(bot):

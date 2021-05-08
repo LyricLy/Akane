@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class AkaneCore(commands.Cog, name="Akane"):
-    """ Akane specific commands. """
+    """Akane specific commands."""
 
     def __init__(self, bot: Akane):
         self.bot = bot
@@ -46,7 +46,7 @@ class AkaneCore(commands.Cog, name="Akane"):
 
     @commands.command(name="hello")
     async def hello(self, ctx: Context) -> None:
-        """ Say hello to Akane. """
+        """Say hello to Akane."""
         now = datetime.datetime.utcnow()
         time = now.hour >= 6 and now.hour < 18
         path = self.akane_details[time].path
@@ -60,19 +60,19 @@ class AkaneCore(commands.Cog, name="Akane"):
 
     @commands.group(invoke_without_command=True)
     async def akane(self, ctx: Context) -> None:
-        """ This is purely for subcommands. """
+        """This is purely for subcommands."""
 
     @akane.command()
     @commands.is_owner()
     async def core(self, ctx: Context, *, body: codeblock_converter) -> None:
-        """ Directly evaluate Akane core code. """
+        """Directly evaluate Akane core code."""
         jsk = self.bot.get_command("jishaku python")
         await jsk(ctx, argument=body)
 
     @akane.command()
     @commands.is_owner()
     async def system(self, ctx: Context, *, body: codeblock_converter) -> None:
-        """ Directly evaluate Akane system code. """
+        """Directly evaluate Akane system code."""
         jsk = self.bot.get_command("jishaku shell")
         await jsk(ctx, argument=body)
 
@@ -119,21 +119,21 @@ class AkaneCore(commands.Cog, name="Akane"):
     @akane.command(aliases=["sauce"])
     @commands.is_owner()
     async def source(self, ctx: Context, *, command: str) -> None:
-        """ Show Akane system code. """
+        """Show Akane system code."""
         jsk = self.bot.get_command("jishaku source")
         await jsk(ctx, command_name=command)
 
     @akane.command(aliases=["debug"])
     @commands.is_owner()
     async def diagnose(self, ctx: Context, *, command_name: str) -> None:
-        """ Diagnose akane features. """
+        """Diagnose akane features."""
         jsk = self.bot.get_command("jishaku debug")
         await jsk(ctx, command_string=command_name)
 
     @akane.command()
     @commands.is_owner()
     async def sleep(self, ctx: Context) -> None:
-        """ Akane naptime. """
+        """Akane naptime."""
         await ctx.send("さようなら!")
         await self.bot.close()
 

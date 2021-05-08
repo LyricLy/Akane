@@ -120,7 +120,7 @@ class RNG(commands.Cog):
 
     @commands.command()
     async def roll(self, ctx: commands.Context, *dice: DiceRoll):
-        """ Roll DnD die! """
+        """Roll DnD die!"""
         if len(dice) >= 25:
             return await ctx.send("No more than 25 rolls per invoke, please.")
 

@@ -232,7 +232,7 @@ class Context(commands.Context):
             self._db = None
 
     async def send(self, content=None, **kwargs):
-        """ Let's try and override default send. """
+        """Let's try and override default send."""
         if content and hasattr(content, "__len__") and len(content) > 2000:
             link = await self.bot.mb_client.post(content, syntax="text")
             return await super().send(

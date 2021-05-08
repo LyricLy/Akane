@@ -32,7 +32,7 @@ class NonLocalEmoji(Exception):
 
 
 class ReactionRoleConfig:
-    """"""
+    """ """
 
     __slots__ = ("id", "bot", "data")
     accepted = ("role", "approval_channel", "emoji")

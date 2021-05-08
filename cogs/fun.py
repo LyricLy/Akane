@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import math
 import random
 import re
 import textwrap
@@ -15,15 +16,16 @@ import time
 from functools import partial
 from string import ascii_lowercase
 from textwrap import fill
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 import discord
 import googletrans
 from discord.ext import commands, tasks
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from utils import db, lang
+from utils import checks, db, lang
 from utils.context import Context
+from utils.converters import RedditMediaURL
 from utils.formats import plural
 
 if TYPE_CHECKING:
@@ -106,7 +108,7 @@ class SpoilerCache:
 
 
 class Fun(commands.Cog):
-    """ Some fun stuff, not fleshed out yet. """
+    """Some fun stuff, not fleshed out yet."""
 
     def __init__(self, bot: Akane):
         self.bot = bot
@@ -124,7 +126,7 @@ class Fun(commands.Cog):
 
     # @commands.Cog.listener("on_message")
     async def quote(self, message: discord.Message) -> None:
-        """"""
+        """ """
         if message.author.bot or message.embeds or message.guild is None:
             return
 
@@ -181,7 +183,7 @@ class Fun(commands.Cog):
 
     @commands.group(invoke_without_command=True, skip_extra=False)
     async def abt(self, ctx, *, content: commands.clean_content):
-        """ I love this language. """
+        """I love this language."""
         keep = re.findall(ABT_REG, content)
 
         def trans(m):
@@ -196,7 +198,7 @@ class Fun(commands.Cog):
 
     @abt.command(name="r", aliases=["reverse"])
     async def abt_reverse(self, ctx, *, tr_input: str):
-        """ Uno reverse. """
+        """Uno reverse."""
         new_str = ""
         br = True
         for char in tr_input:
@@ -336,7 +338,7 @@ class Fun(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 60, commands.BucketType.guild)
     async def statistics(self, ctx):
-        """ A small embed with some statistics Akane tracks. """
+        """A small embed with some statistics Akane tracks."""
         query = "SELECT * FROM statistics LIMIT 1;"
         stat_record = await self.bot.pool.fetchrow(query)
 
@@ -380,8 +382,28 @@ class Fun(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.command(usage="<url>")
+    @commands.cooldown(1, 5.0, commands.BucketType.member)
+    async def vreddit(self, ctx, *, reddit: RedditMediaURL):
+        """Downloads a v.redd.it submission.
+        Regular reddit URLs or v.redd.it URLs are supported.
+        """
+
+        filesize = ctx.guild.filesize_limit if ctx.guild else 8388608
+        async with ctx.session.get(reddit.url) as resp:
+            if resp.status != 200:
+                return await ctx.send("Could not download video.")
+
+            if int(resp.headers["Content-Length"]) >= filesize:
+                return await ctx.send("Video is too big to be uploaded.")
+
+            data = await resp.read()
+            await ctx.send(
+                file=discord.File(io.BytesIO(data), filename=reddit.filename)
+            )
+
     def _draw_words(self, text: str) -> io.BytesIO:
-        """ . """
+        """."""
         text = fill(text, 25)
         font = ImageFont.truetype("static/W6.ttc", 60)
         padding = 50
@@ -470,6 +492,44 @@ class Fun(commands.Cog):
             await ctx.send(embed=embed)
         finally:
             task.cancel()
+
+    def safe_chan(
+        self, member: discord.Member, channels: List[discord.VoiceChannel]
+    ) -> Optional[discord.VoiceChannel]:
+        """ """
+        random.shuffle(channels)
+        for channel in channels:
+            if channel.permissions_for(member).connect:
+                return channel
+        return None
+
+    @commands.command(hidden=True, name="scatter", aliases=["scattertheweak"])
+    @checks.has_guild_permissions(administrator=True)
+    async def scatter(self, ctx: Context) -> None:
+        """ """
+        if ctx.author.voice is None:
+            return
+
+        members = ctx.author.voice.channel.members
+        for member in members:
+            target = self.safe_chan(member, ctx.guild.voice_channels)
+            if target is None:
+                continue
+            await member.move_to(target)
+
+    @commands.command(hidden=True, name="snap")
+    @checks.has_guild_permissions(administrator=True)
+    async def snap(self, ctx: Context) -> None:
+        """ """
+        members = []
+        for vc in ctx.guild.voice_channels:
+            members.extend(vc.members)
+
+        upper = math.ceil(len(members) / 2)
+        choices = random.choices(members, k=upper)
+
+        for m in choices:
+            await m.move_to(None)
 
 
 def setup(bot: Akane):

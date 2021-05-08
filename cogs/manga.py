@@ -59,7 +59,7 @@ class _MangadexManga:
 
 class MangadexAPIResponse:
     def __init__(self, payload: Dict):
-        """ Data response from the Mangadex API. """
+        """Data response from the Mangadex API."""
         self._chapters: Optional[Dict[str, Dict[str, Any]]] = payload.get(
             "chapter"
         )  # private because not gonna use... yet?
@@ -130,7 +130,7 @@ class MangadexRSSEntry:
 class MangadexEmbed(discord.Embed):
     @classmethod
     def from_rss(cls, entry: MangadexRSSEntry) -> MangadexEmbed:
-        """ Return a custom Embed based on a Mangadex RSS entry. """
+        """Return a custom Embed based on a Mangadex RSS entry."""
 
         embed = cls(colour=0xE91E63)
         embed.title = entry.title
@@ -144,7 +144,7 @@ class MangadexEmbed(discord.Embed):
 
     @classmethod
     def from_api(cls, mango: str, entry: MangadexAPIResponse) -> "MangadexEmbed":
-        """ Returns a custom Embed based on a Mangadex API entry. """
+        """Returns a custom Embed based on a Mangadex API entry."""
 
         alt_covers = " | ".join(
             [f"[{index}]({url})" for index, url in enumerate(entry.alt_covers, start=1)]
@@ -167,7 +167,7 @@ class MangadexEmbed(discord.Embed):
 
 
 class Manga(commands.Cog):
-    """ . """
+    """."""
 
     def __init__(self, bot: Akane) -> None:
         self.bot = bot
@@ -181,7 +181,7 @@ class Manga(commands.Cog):
 
     @commands.command()
     async def mangadex(self, ctx: commands.Context, *, mangadex_id: int):
-        """ Return details, images and links to a Mangadex entry. """
+        """Return details, images and links to a Mangadex entry."""
         try:
             response = await self.bot.session.get(
                 f"{MANGADEX_API_BASE}manga/{mangadex_id}"
@@ -200,7 +200,7 @@ class Manga(commands.Cog):
 
     @tasks.loop(minutes=30)
     async def rss_parser(self):
-        """. """
+        """."""
         async with self.bot.session.get(
             self.rss_url, timeout=aiohttp.ClientTimeout(total=10)
         ) as response:
@@ -224,7 +224,7 @@ class Manga(commands.Cog):
 
     @rss_parser.before_loop
     async def before_rss_parser(self):
-        """ . """
+        """."""
         await self.bot.wait_until_ready()
 
     @rss_parser.error

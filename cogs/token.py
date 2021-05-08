@@ -46,7 +46,7 @@ def validate_token(token):
 
 
 class Token(commands.Cog):
-    """ For handling and parsing tokens. """
+    """For handling and parsing tokens."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -129,7 +129,7 @@ class Token(commands.Cog):
 
     @commands.group(invoke_without_command=True, aliases=["t"])
     async def token(self, ctx, *, token) -> discord.Message:
-        """ Invalidate a token manually. """
+        """Invalidate a token manually."""
         if ctx.invoked_subcommand:
             pass
         if not validate_token(token):
@@ -141,7 +141,7 @@ class Token(commands.Cog):
 
     @token.command(aliases=["p"])
     async def parse(self, ctx, *, token):
-        """ Parse a token and return details. """
+        """Parse a token and return details."""
         if not validate_token(token):
             raise InvalidToken("Not a valid token type.")
         enc_id = token.split(".")

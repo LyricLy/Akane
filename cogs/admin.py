@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class BlockTable(db.Table, table_name="owner_blocked"):
-    """ Keeping track of whom I blocked and why. """
+    """Keeping track of whom I blocked and why."""
 
     user_id = db.Column(db.Integer(big=True), primary_key=True)
     reason = db.Column(db.String)
@@ -40,7 +40,7 @@ class PerformanceMocker:
     def permissions_for(
         self, obj: Union[discord.Role, discord.Member]
     ) -> discord.Permissions:
-        """ Lying about permissions to embed, only temporarily. """
+        """Lying about permissions to embed, only temporarily."""
         # This makes it so pagination sessions just abruptly end on __init__
         # Most checks based on permission have a bypass for the owner anyway
         # So this lie will not affect the actual command invocation.
@@ -78,10 +78,10 @@ class PerformanceMocker:
 
 
 class GlobalChannel(commands.Converter):
-    """ GlobalChannel converter object. """
+    """GlobalChannel converter object."""
 
     async def convert(self, ctx, argument):
-        """ Perform conversion. """
+        """Perform conversion."""
         try:
             return await commands.TextChannelConverter().convert(ctx, argument)
         except commands.BadArgument:
@@ -121,7 +121,7 @@ class Admin(commands.Cog):
         return await self.bot.is_owner(ctx.author)
 
     def get_syntax_error(self, err: Exception) -> str:
-        """ Grabs the syntax error. """
+        """Grabs the syntax error."""
         if err.text is None:
             return f"```py\n{err.__class__.__name__}: {err}\n```"
         return (
@@ -130,7 +130,7 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def leave(self, ctx: Context) -> None:
-        """ Leaves the current guild. """
+        """Leaves the current guild."""
         await ctx.guild.leave()
 
     @commands.command()
@@ -286,20 +286,20 @@ class Admin(commands.Cog):
         )
 
     async def ban_all(self, dick_id: int) -> None:
-        """ Ban em from all your guilds. """
+        """Ban em from all your guilds."""
         for gid in self.my_guilds:
             g = self.bot.get_guild(gid)
             await g.ban(discord.Object(id=dick_id))
 
     async def unban_all(self, not_dick_id: int) -> None:
-        """ Unban em from all your guilds. """
+        """Unban em from all your guilds."""
         for gid in self.my_guilds:
             g = self.bot.get_guild(gid)
             await g.unban(discord.Object(id=not_dick_id))
 
     @commands.group(name="ublock", invoke_without_command=True)
     async def _block(self, ctx: Context, user_id: int, *, reason: str) -> None:
-        """ Let's make a private 'why I blocked them case'. """
+        """Let's make a private 'why I blocked them case'."""
         query = """ INSERT INTO owner_blocked (user_id, reason)
                     VALUES ($1, $2)
                     ON CONFLICT (user_id)
@@ -317,7 +317,7 @@ class Admin(commands.Cog):
 
     @_block.command(name="query", aliases=["q"])
     async def _block_query(self, ctx: Context, user_id: int) -> None:
-        """ Show why the target was blocked. """
+        """Show why the target was blocked."""
         query = """ SELECT reason FROM owner_blocked WHERE user_id = $1; """
         result = await self.bot.pool.fetchrow(query, user_id)
 
@@ -331,7 +331,7 @@ class Admin(commands.Cog):
     async def _block_remove(
         self, ctx: Context, user_id: int, unban: bool = False
     ) -> None:
-        """ Remove a block entry. """
+        """Remove a block entry."""
         query = """ DELETE FROM owner_blocked WHERE user_id = $1; """
         coros = [self.bot.pool.execute(query, user_id), self.unban_all(user_id)]
         config = self.bot.get_cog("Config")
@@ -342,5 +342,5 @@ class Admin(commands.Cog):
 
 
 def setup(bot: Akane):
-    """ Cog entrypoint. """
+    """Cog entrypoint."""
     bot.add_cog(Admin(bot))

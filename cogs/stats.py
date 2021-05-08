@@ -227,7 +227,7 @@ class Stats(commands.Cog):
 
     @commands.command(hidden=True)
     async def socketstats(self, ctx):
-        """ Show data on the received socketstats since uptime. """
+        """Show data on the received socketstats since uptime."""
         delta = datetime.datetime.utcnow() - self.bot.uptime
         minutes = delta.total_seconds() / 60
         total = sum(self.bot.socket_stats.values())
@@ -274,7 +274,7 @@ class Stats(commands.Cog):
 
     @commands.command()
     async def linecount(self, ctx):
-        """ Quick embed with the total line count of the Bot so far. """
+        """Quick embed with the total line count of the Bot so far."""
         pylines = 0
         pyfiles = 0
         for path, subdirs, files in os.walk("."):

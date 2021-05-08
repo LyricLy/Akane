@@ -22,7 +22,7 @@ PYTZ_LOWER_TIMEZONES = [*map(str.lower, pytz.all_timezones)]
 
 
 class TZMenuSource(menus.ListPageSource):
-    """ Okay let's make it embeds, I guess. """
+    """Okay let's make it embeds, I guess."""
 
     def __init__(self, data, embeds):
         self.data = data
@@ -30,12 +30,12 @@ class TZMenuSource(menus.ListPageSource):
         super().__init__(data, per_page=1)
 
     async def format_page(self, menu, page):
-        """ Format each page. """
+        """Format each page."""
         return self.embeds[page]
 
 
 class TimeTable(db.Table, table_name="tz_store"):
-    """ Create the table for timezones. Make it unique per user, with guild array. """
+    """Create the table for timezones. Make it unique per user, with guild array."""
 
     user_id = db.Column(db.Integer(big=True), primary_key=True)
 
@@ -59,17 +59,14 @@ class TimezoneConverter(commands.Converter):
             )
 
             def check(message):
-                content = message.content.removesuffix(".")
-                return (
-                    message.author == ctx.author
-                    and message.channel == ctx.channel
-                    and content.isdigit()
-                    and 1 <= int(content) <= 5
-                )
+                return message.author == ctx.author and message.channel == ctx.channel
 
             try:
                 result = await ctx.bot.wait_for("message", check=check, timeout=30)
             except asyncio.TimeoutError:
+                raise commands.BadArgument("No valid timezone given or selected.")
+
+            if not result.content.isdigit() and 1 <= int(result.content) <= 5:
                 raise commands.BadArgument("No valid timezone given or selected.")
             return pytz.timezone(query[int(result.content) - 1][0])
 
@@ -77,7 +74,7 @@ class TimezoneConverter(commands.Converter):
 
 
 class Time(commands.Cog):
-    """ Time cog for fun time stuff. """
+    """Time cog for fun time stuff."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -100,7 +97,7 @@ class Time(commands.Cog):
         return await self.bot.pool.execute(query, guild.id)
 
     async def cog_command_error(self, ctx, error):
-        """ Error handling for Time.py. """
+        """Error handling for Time.py."""
         error = getattr(error, "original", error)
         if isinstance(error, commands.BadArgument):
             return await ctx.send(str(error))
@@ -119,7 +116,7 @@ class Time(commands.Cog):
     def _curr_tz_time(
         self, curr_timezone: pytz.tzinfo.BaseTzInfo, *, ret_datetime: bool = False
     ):
-        """ We assume it's a good tz here. """
+        """We assume it's a good tz here."""
         dt_obj = datetime.now(curr_timezone)
         if ret_datetime:
             return dt_obj
@@ -129,7 +126,7 @@ class Time(commands.Cog):
     async def timezone(
         self, ctx: commands.Context, *, timezone: TimezoneConverter = None
     ) -> discord.Message:
-        """ This will return the time in a specified timezone. """
+        """This will return the time in a specified timezone."""
         if not timezone:
             timezone = random.choice(pytz.all_timezones)
         embed = discord.Embed(
@@ -143,7 +140,7 @@ class Time(commands.Cog):
     @commands.command(aliases=["tzs"])
     @commands.cooldown(1, 15, commands.BucketType.channel)
     async def timezones(self, ctx: commands.Context):
-        """ List all possible timezones... """
+        """List all possible timezones..."""
         return await ctx.send(
             "Nah bro, no more menu for this:\n<https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568>"
         )
@@ -151,7 +148,7 @@ class Time(commands.Cog):
     @commands.group(invoke_without_command=True)
     @commands.guild_only()
     async def time(self, ctx: commands.Context, *, member: discord.Member = None):
-        """ Let's look at storing member's tz. """
+        """Let's look at storing member's tz."""
         if ctx.invoked_subcommand:
             pass
         member = member or ctx.author
@@ -178,7 +175,7 @@ class Time(commands.Cog):
     @time.command(name="set")
     @commands.guild_only()
     async def _set(self, ctx, *, set_timezone: TimezoneConverter):
-        """ Add your time zone, with a warning about public info. """
+        """Add your time zone, with a warning about public info."""
         query = """ INSERT INTO tz_store(user_id, guild_ids, tz)
                     VALUES ($1, $2, $3)
                     ON CONFLICT (user_id) DO UPDATE
@@ -199,7 +196,7 @@ class Time(commands.Cog):
     @time.command(name="remove")
     @commands.guild_only()
     async def _remove(self, ctx):
-        """ Remove your timezone from this guild. """
+        """Remove your timezone from this guild."""
         query = """
             WITH corrected AS (
                 SELECT user_id, array_agg(guild_id) new_guild_ids
@@ -219,7 +216,7 @@ class Time(commands.Cog):
 
     @time.command(name="clear")
     async def _clear(self, ctx):
-        """ Clears your timezones from all guilds. """
+        """Clears your timezones from all guilds."""
         query = "DELETE FROM tz_store WHERE user_id = $1;"
         confirm = await ctx.prompt(
             "Are you sure you wish to purge your timezone from all guilds?"
@@ -230,7 +227,7 @@ class Time(commands.Cog):
         return await ctx.message.add_reaction(self.bot.emoji[True])
 
     async def time_error(self, ctx, error):
-        """ Quick error handling for timezones. """
+        """Quick error handling for timezones."""
         error = getattr(error, "original", error)
         if isinstance(error, commands.MissingRequiredArgument):
             return await ctx.send(
@@ -239,5 +236,5 @@ class Time(commands.Cog):
 
 
 def setup(bot):
-    """ Cog entrypoint. """
+    """Cog entrypoint."""
     bot.add_cog(Time(bot))

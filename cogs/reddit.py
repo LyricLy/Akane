@@ -15,22 +15,22 @@ from utils.paginator import RoboPages
 
 
 class SubredditPageSource(menus.ListPageSource):
-    """ For discord.ext.menus to format Subreddit queries. """
+    """For discord.ext.menus to format Subreddit queries."""
 
     def __init__(self, data):
         self.data = data
         super().__init__(data, per_page=1)
 
     async def format_page(self, menu, page):
-        """ Format each page entry. """
+        """Format each page entry."""
         return page
 
 
 class SubredditPost:
-    """ Let's try and create a generic object for a subreddit return... """
+    """Let's try and create a generic object for a subreddit return..."""
 
     def __init__(self, subreddit_dict: dict, *, video_link: str, image_link: str):
-        """ Hrm. """
+        """Hrm."""
         self.url = f"https://reddit.com/{subreddit_dict['permalink']}"
         self.resp_url = subreddit_dict["url"]
         self.subreddit = subreddit_dict["subreddit_name_prefixed"]
@@ -46,14 +46,14 @@ class SubredditPost:
 
 
 class Reddit(commands.Cog):
-    """ For Reddit based queries. """
+    """For Reddit based queries."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.headers = {"User-Agent": "Robo-Hz Discord bot"}
 
     def _gen_embeds(self, requester: str, iterable: list) -> typing.List[discord.Embed]:
-        """ Generate many embeds from the top 10 posts on each subreddit. """
+        """Generate many embeds from the top 10 posts on each subreddit."""
         embeds = []
 
         for item in iterable:
@@ -88,7 +88,7 @@ class Reddit(commands.Cog):
     async def _perform_search(
         self, requester: str, channel: discord.TextChannel, subreddit: str, sort_by: str
     ):
-        """ Performs the search for queries with aiohttp. Returns 10 items. """
+        """Performs the search for queries with aiohttp. Returns 10 items."""
         async with self.bot.session.get(
             f"https://reddit.com/r/{subreddit}/about.json", headers=self.headers
         ) as subr_top_resp:
@@ -149,7 +149,7 @@ class Reddit(commands.Cog):
     async def _reddit(
         self, ctx: commands.Context, subreddit: str, sort_by: str = "hot"
     ):
-        """ Main Reddit command, subcommands to be added. """
+        """Main Reddit command, subcommands to be added."""
         sub_re = re.compile(r"(/?(r/)?(?P<subname>.*))")
         sub_search = sub_re.search(subreddit)
         if sub_search.group("subname"):
@@ -164,7 +164,7 @@ class Reddit(commands.Cog):
 
     @_reddit.error
     async def reddit_error(self, ctx, error):
-        """ Local Error handler for reddit command. """
+        """Local Error handler for reddit command."""
         error = getattr(error, "original", error)
         if isinstance(error, commands.NSFWChannelRequired):
             return await ctx.send("This ain't an NSFW channel.")
@@ -177,5 +177,5 @@ class Reddit(commands.Cog):
 
 
 def setup(bot):
-    """ Cog entrypoint. """
+    """Cog entrypoint."""
     bot.add_cog(Reddit(bot))

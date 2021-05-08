@@ -22,7 +22,7 @@ class Welcome(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        """ On member joins... let's check for a welcome message. """
+        """On member joins... let's check for a welcome message."""
         query = "SELECT * FROM welcome_config WHERE guild_id = $1"
         results = await self.bot.pool.fetchrow(query, member.guild.id)
 
@@ -37,7 +37,7 @@ class Welcome(commands.Cog):
 
     @commands.group(name="welcome", invoke_without_command=True)
     async def welcome_group(self, ctx, channel: discord.TextChannel, *, message: str):
-        """ Group. If no subcommand then create a welcome message. """
+        """Group. If no subcommand then create a welcome message."""
         if ctx.invoked_subcommand:
             pass
 
@@ -53,14 +53,14 @@ class Welcome(commands.Cog):
 
     @welcome_group.command(name="remove", aliases=["clear", "prune"])
     async def welcome_remove(self, ctx):
-        """ Command. Let's remove their welcome messages. """
+        """Command. Let's remove their welcome messages."""
         query = "DELETE FROM welcome_config WHERE guild_id = $1"
         await self.bot.pool.execute(query, ctx.guild.id)
         return await ctx.message.add_reaction(self.bot.emoji[True])
 
     @welcome_group.command(name="query")
     async def welcome_query(self, ctx):
-        """ Command. Let's have a look at your active help message. """
+        """Command. Let's have a look at your active help message."""
         query = "SELECT * FROM welcome_config WHERE guild_id = $1"
         record = await self.bot.pool.fetchrow(query, ctx.guild.id)
         if record is None:

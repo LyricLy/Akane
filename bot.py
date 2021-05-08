@@ -82,7 +82,7 @@ def _prefix_callable(bot: Akane, msg: discord.Message) -> Iterable[str]:
 
 
 class Akane(commands.Bot):
-    """ The actual robot herself! """
+    """The actual robot herself!"""
 
     pool: Pool
 
@@ -132,13 +132,13 @@ class Akane(commands.Bot):
                 traceback.print_exc()
 
     async def on_socket_response(self, msg: Any) -> None:
-        """ Websocket responses. """
+        """Websocket responses."""
         self._prev_events.append(msg)
 
     async def on_command_error(
         self, ctx: Context, error: commands.CommandError
     ) -> None:
-        """ When a command errors out. """
+        """When a command errors out."""
         if isinstance(error, commands.NoPrivateMessage):
             await ctx.author.send("This command cannot be used in private messages.")
         elif isinstance(error, commands.DisabledCommand):
@@ -155,19 +155,19 @@ class Akane(commands.Bot):
     def get_guild_prefixes(
         self, guild: discord.Guild, *, local_inject=_prefix_callable
     ) -> List[str]:
-        """ Get prefixes per guild. """
+        """Get prefixes per guild."""
         proxy_msg = discord.Object(id=0)
         proxy_msg.guild = guild
         return local_inject(self, proxy_msg)
 
     def get_raw_guild_prefixes(self, guild_id: int) -> List[str]:
-        """ The raw prefixes. """
+        """The raw prefixes."""
         return self.prefixes.get(guild_id, ["a!", "A!"])
 
     async def set_guild_prefixes(
         self, guild: discord.Guild, prefixes: List[str]
     ) -> None:
-        """ Set the prefixes. """
+        """Set the prefixes."""
         if not prefixes:
             await self.prefixes.put(guild.id, [])
         elif len(prefixes) > 10:
@@ -176,30 +176,30 @@ class Akane(commands.Bot):
             await self.prefixes.put(guild.id, sorted(set(prefixes), reverse=True))
 
     async def add_to_blacklist(self, object_id: int) -> None:
-        """ Add object to blacklist. """
+        """Add object to blacklist."""
         await self.blacklist.put(object_id, True)
 
     async def remove_from_blacklist(self, object_id: int) -> None:
-        """ Remove object from blacklist. """
+        """Remove object from blacklist."""
         try:
             await self.blacklist.remove(object_id)
         except KeyError:
             pass
 
     async def on_ready(self) -> None:
-        """ When the websocket reports ready. """
+        """When the websocket reports ready."""
         if not hasattr(self, "uptime"):
             self.uptime = datetime.datetime.utcnow()
 
         print(f"Ready: {self.user} (ID: {self.user.id})")
 
     async def on_resumed(self) -> None:
-        """ When the websocket resumes a connection. """
+        """When the websocket resumes a connection."""
         print("Resumed...")
 
     @discord.utils.cached_property
     def stat_webhook(self) -> discord.Webhook:
-        """ Get webhook stats. """
+        """Get webhook stats."""
         hook = discord.Webhook.from_url(
             config.stat_webhook, adapter=discord.AsyncWebhookAdapter(self.session)
         )
@@ -213,7 +213,7 @@ class Akane(commands.Bot):
         *,
         autoblock: bool = False,
     ) -> Optional[discord.WebhookMessage]:
-        """ Deals with events that spam the log. """
+        """Deals with events that spam the log."""
         guild_name = getattr(ctx.guild, "name", "No Guild (DMs)")
         guild_id = getattr(ctx.guild, "id", None)
         fmt = "User %s (ID %s) in guild %r (ID %s) spamming, retry_after: %.2fs"
@@ -242,7 +242,7 @@ class Akane(commands.Bot):
         return webhook.send(embed=embed)
 
     async def process_commands(self, message: discord.Message) -> None:
-        """ Bot's process command override. """
+        """Bot's process command override."""
         ctx = await self.get_context(message, cls=Context)
 
         if ctx.command is None:
@@ -277,7 +277,7 @@ class Akane(commands.Bot):
             await ctx.release()
 
     async def on_message(self, message: discord.Message) -> None:
-        """ Fires when a message is received. """
+        """Fires when a message is received."""
         if message.author.bot:
             return
         await self.process_commands(message)
@@ -291,12 +291,12 @@ class Akane(commands.Bot):
             await self.process_commands(after)
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
-        """ When the bot joins a guild. """
+        """When the bot joins a guild."""
         if guild.id in self.blacklist:
             await guild.leave()
 
     async def close(self) -> None:
-        """ When the bot closes. """
+        """When the bot closes."""
         await asyncio.gather(
             super().close(),
             self.session.close(),
@@ -305,7 +305,7 @@ class Akane(commands.Bot):
         self.hentai_client.close()
 
     def run(self) -> None:
-        """ Run my Akane please. """
+        """Run my Akane please."""
         try:
             super().run(config.token, reconnect=True)
         finally:
@@ -320,5 +320,5 @@ class Akane(commands.Bot):
 
     @property
     def config(self):
-        """ Bot's config. """
+        """Bot's config."""
         return __import__("config")

@@ -17,6 +17,7 @@ from collections import Counter, defaultdict
 
 import asyncpg
 import discord
+from black import E
 from discord.ext import commands, tasks
 
 from utils import cache, checks, db, time
@@ -729,6 +730,20 @@ class Mod(commands.Cog):
                 count += 1
         return {"Bot": count}
 
+    async def _regular_user_cleanup_strategy(
+        self, ctx: Context, search: int
+    ) -> Counter:
+        """ """
+        prefixes = tuple(self.bot.get_guild_prefixes(ctx.guild))
+
+        def check(m: discord.Message) -> bool:
+            return (m.author == ctx.me or m.content.startswith(prefixes)) and not (
+                m.mentions or m.role_mentions
+            )
+
+        deleted = await ctx.channel.purge(limit=search, check=check, before=ctx.message)
+        return Counter(m.author.display_name for m in deleted)
+
     async def _complex_cleanup_strategy(self, ctx, search):
         prefixes = tuple(self.bot.get_guild_prefixes(ctx.guild))  # thanks startswith
 
@@ -740,7 +755,7 @@ class Mod(commands.Cog):
 
     @commands.command()
     @checks.has_permissions(manage_messages=True)
-    async def cleanup(self, ctx, search=100):
+    async def cleanup(self, ctx: Context, search: int = 100):
         """Cleans up the bot's messages from the channel.
 
         If a search number is specified, it searches that many messages to delete.
@@ -751,12 +766,23 @@ class Mod(commands.Cog):
         which people got their messages deleted and their count. This is useful
         to see which users are spammers.
 
-        You must have Manage Messages permission to use this.
+        Members with Manage Messages can search up to 1000 messages.
+        Members without can search up to 25 messages.
         """
 
         strategy = self._basic_cleanup_strategy
-        if ctx.me.permissions_in(ctx.channel).manage_messages:
-            strategy = self._complex_cleanup_strategy
+        is_mod = ctx.channel.permissions_for(ctx.author).manage_messages
+
+        if ctx.channel.permissions_for(ctx.me).manage_messages:
+            if is_mod:
+                strategy = self._complex_cleanup_strategy
+            else:
+                strategy = self._regular_user_cleanup_strategy
+
+        if is_mod:
+            search = min(max(2, search), 1000)
+        else:
+            search = min(max(2, search), 25)
 
         spammers = await strategy(ctx, search)
         deleted = sum(spammers.values())
@@ -2090,7 +2116,7 @@ class Mod(commands.Cog):
     @commands.guild_only()
     @commands.bot_has_guild_permissions(ban_members=True)
     async def selfban(self, ctx):
-        """ This is a totally destructive Ban. It won't be undone without begging moderators. By agreeing you agree you're gone forever. """
+        """This is a totally destructive Ban. It won't be undone without begging moderators. By agreeing you agree you're gone forever."""
         confirm = await ctx.prompt("This is a self **ban**. There is no undoing this.")
         if confirm:
             return await ctx.author.ban(reason="Suicide.", delete_message_days=0)
@@ -2185,7 +2211,7 @@ class Mod(commands.Cog):
 
     @commands.Cog.listener()
     async def on_tempblock_timer_complete(self, timer):
-        """ Custom event for timer - when it completes. """
+        """Custom event for timer - when it completes."""
         guild_id, mod_id, channel_id, member_id = timer.args
         channels = timer.kwargs.get("channels")
 

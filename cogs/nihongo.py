@@ -377,13 +377,13 @@ class Nihongo(commands.Cog):
 
     @commands.command()
     async def romaji(self, ctx: Context, *, text: commands.clean_content):
-        """ Sends the Romaji version of passed Kana. """
+        """Sends the Romaji version of passed Kana."""
         ret = await self.bot.loop.run_in_executor(None, self.converter.do, text)
         await ctx.send(ret)
 
     @commands.group(name="kanji", aliases=["かんじ", "漢字"], invoke_without_command=True)
     async def kanji(self, ctx: Context, character: str):
-        """ Return data on a single Kanji from the KanjiDev API. """
+        """Return data on a single Kanji from the KanjiDev API."""
         if len(character) > 1:
             raise commands.BadArgument("Only one Kanji please.")
         url = f"{BASE_URL}/kanji/{character}"
@@ -400,7 +400,7 @@ class Nihongo(commands.Cog):
 
     @kanji.command(name="words")
     async def words(self, ctx: Context, character: str):
-        """ Return the words a Kanji is used in, or in conjuction with. """
+        """Return the words a Kanji is used in, or in conjuction with."""
         if len(character) > 1:
             raise commands.BadArgument("Only one Kanji please.")
         url = f"{BASE_URL}/words/{character}"
@@ -440,7 +440,7 @@ class Nihongo(commands.Cog):
 
     @commands.command()
     async def jisho(self, ctx: Context, *, query: str):
-        """ Query the Jisho api with your kanji/word. """
+        """Query the Jisho api with your kanji/word."""
         async with self.bot.session.get(
             JISHO_WORDS_URL, params={"keyword": query}
         ) as response:
@@ -473,7 +473,7 @@ class Nihongo(commands.Cog):
             await menu.start(ctx)
 
     def _draw_kana(self, text: str) -> BytesIO:
-        """ . """
+        """."""
         # font = ImageFont.truetype("static/Hiragino-Sans-GB.ttc", 60)
         text = fill(text, 25, replace_whitespace=False)
         font = ImageFont.truetype("static/W6.ttc", 60)

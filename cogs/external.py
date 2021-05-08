@@ -24,7 +24,7 @@ class Feeds(db.Table):
 
 
 class PypiObject:
-    """ Pypi objects. """
+    """Pypi objects."""
 
     def __init__(self, name: str, pypi_dict: dict):
         self.url = f"https://pypi.org/project/{name}/"
@@ -71,7 +71,7 @@ class PypiObject:
 
 
 class External(commands.Cog):
-    """ External API stuff. """
+    """External API stuff."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -82,7 +82,7 @@ class External(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def pypi(self, ctx, *, package_name: str):
-        """ Searches PyPi for a Package. """
+        """Searches PyPi for a Package."""
         async with self.bot.session.get(
             f"https://pypi.org/pypi/{package_name}/json", headers=self.headers
         ) as pypi_resp:
@@ -139,7 +139,7 @@ class External(commands.Cog):
 
     @commands.command()
     async def currency(self, ctx, amount: float, source: str, dest: str):
-        """ Currency converter. """
+        """Currency converter."""
         source = source.upper()
         dest = dest.upper()
         new_amount = self.currency_conv.convert(amount, source, dest)
@@ -319,5 +319,5 @@ class External(commands.Cog):
 
 
 def setup(bot):
-    """ Cog entrypoint. """
+    """Cog entrypoint."""
     bot.add_cog(External(bot))

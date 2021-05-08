@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import zlib
+from textwrap import dedent
 from typing import TYPE_CHECKING
 
 import asyncpg
@@ -69,7 +70,7 @@ class SourceConverter(commands.Converter):
 
 
 class SphinxObjectFileReader:
-    """ A Sphinx file reader. """
+    """A Sphinx file reader."""
 
     # Inspired by Sphinx's InventoryFileReader
     BUFSIZE = 16 * 1024
@@ -245,27 +246,27 @@ class RTFX(commands.Cog):
 
     @rtfm.command(name="asyncpg")
     async def rtfm_asyncpg(self, ctx, *, obj: str = None):
-        """ Gives you the documentation link for an `asyncpg` entity. """
+        """Gives you the documentation link for an `asyncpg` entity."""
         await self.do_rtfm(ctx, "asyncpg", obj)
 
     @rtfm.command(name="twitchio")
     async def rtfm_twitchio(self, ctx, *, obj: str = None):
-        """ Gives you the documentation link for a `twitchio` entity. """
+        """Gives you the documentation link for a `twitchio` entity."""
         await self.do_rtfm(ctx, "twitchio", obj)
 
     @rtfm.command(name="aiohttp")
     async def rtfm_aiohttp(self, ctx, *, obj: str = None):
-        """ Gives you the documentation link for an `aiohttp` entity. """
+        """Gives you the documentation link for an `aiohttp` entity."""
         await self.do_rtfm(ctx, "aiohttp", obj)
 
     @rtfm.command(name="wavelink")
     async def rtfm_wavelink(self, ctx, *, obj: str = None):
-        """ Gives you the documentation link for a `Wavelink` entity. """
+        """Gives you the documentation link for a `Wavelink` entity."""
         await self.do_rtfm(ctx, "wavelink", obj)
 
     @rtfm.command(name="flask")
     async def rtfm_flask(self, ctx, *, obj: str = None):
-        """ Gives you the documentation link for a `Wavelink` entity. """
+        """Gives you the documentation link for a `Wavelink` entity."""
         await self.do_rtfm(ctx, "flask", obj)
 
     async def _member_stats(self, ctx, member, total_uses):
@@ -295,6 +296,8 @@ class RTFX(commands.Cog):
                     title="Available sources of rtfs", description="\n".join(RTFS)
                 )
             )
+
+        target = dedent(target)
 
         if len(target) >= 1990:
             paste = await ctx.bot.mb_client.post(target, syntax="py")

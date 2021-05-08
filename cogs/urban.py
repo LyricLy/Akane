@@ -64,7 +64,7 @@ class UrbanDictionaryPageSource(menus.ListPageSource):
 
 
 class Urban(commands.Cog):
-    """ A cog purely for Urban dictionary definitions. """
+    """A cog purely for Urban dictionary definitions."""
 
     def __init__(self, bot):
         self.bot = bot

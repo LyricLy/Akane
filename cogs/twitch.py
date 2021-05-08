@@ -17,11 +17,11 @@ from utils import cache, db
 
 
 class TooManyAlerts(Exception):
-    """ There are too many twitch alerts for this guild. """
+    """There are too many twitch alerts for this guild."""
 
 
 class InvalidBroadcaster(Exception):
-    """ Wrong streamer. """
+    """Wrong streamer."""
 
     def __init__(self, broadcaster, message="Invalid streamer"):
         self.broadcaster = broadcaster
@@ -29,7 +29,7 @@ class InvalidBroadcaster(Exception):
 
 
 class TwitchTable(db.Table):
-    """ Create the twitch database table. """
+    """Create the twitch database table."""
 
     id = db.PrimaryKeyColumn()
 
@@ -41,7 +41,7 @@ class TwitchTable(db.Table):
 
 
 class TwitchClipTable(db.Table):
-    """ Creates the Clip table for storing clip following data. """
+    """Creates the Clip table for storing clip following data."""
 
     id = db.PrimaryKeyColumn()
 
@@ -52,7 +52,7 @@ class TwitchClipTable(db.Table):
 
 
 class TwitchSecretTable(db.Table):
-    """ Creates the database for storing the OAuth secret. """
+    """Creates the database for storing the OAuth secret."""
 
     id = db.PrimaryKeyColumn()
 
@@ -62,10 +62,10 @@ class TwitchSecretTable(db.Table):
 
 
 class Twitch(commands.Cog):
-    """ Twitch based stuff on discord! """
+    """Twitch based stuff on discord!"""
 
     def __init__(self, bot):
-        """ Classic init function. """
+        """Classic init function."""
         self.bot = bot
         self.oauth_get_endpoint = "https://id.twitch.tv/oauth2/token"
         self.stream_endpoint = "https://api.twitch.tv/helix/streams"
@@ -79,17 +79,17 @@ class Twitch(commands.Cog):
         self.last_pagination = None
 
     async def _get_streamers(self, name: str, guild_id: int) -> List[asyncpg.Record]:
-        """ To get all streamers in the db. """
+        """To get all streamers in the db."""
         query = """ SELECT * FROM twitchtable WHERE streamer_name = $1 AND guild_id = $2; """
         return await self.bot.pool.fetch(query, name, guild_id)
 
     async def _get_clips(self, name: str, guild_id: int) -> List[asyncpg.Record]:
-        """ To get all streamers in the db. """
+        """To get all streamers in the db."""
         query = """ SELECT * FROM twitchcliptable WHERE streamer_name = $1 AND guild_id = $2; """
         return await self.bot.pool.fetch(query, name, guild_id)
 
     async def _refresh_oauth(self) -> None:
-        """ Let's call this whenever we get locked out. """
+        """Let's call this whenever we get locked out."""
         async with self.bot.session.post(
             self.oauth_get_endpoint, params=self.bot.config.twitch_oauth_headers
         ) as oa_resp:
@@ -117,7 +117,7 @@ class Twitch(commands.Cog):
 
     @cache.cache()
     async def _gen_headers(self) -> Dict[str, str]:
-        """ Let's use this to create the Headers. """
+        """Let's use this to create the Headers."""
         base = self.bot.config.twitch_headers
         query = "SELECT secret from twitchsecrettable WHERE id = 1;"
         new_token_resp = await self.bot.pool.fetchrow(query)
@@ -126,12 +126,12 @@ class Twitch(commands.Cog):
         return base
 
     async def _get_streamer_guilds(self, guild_id: int) -> List[asyncpg.Record]:
-        """ Return records for matched guild_ids. """
+        """Return records for matched guild_ids."""
         query = """ SELECT * FROM twitchtable WHERE guild_id = $1; """
         return await self.bot.pool.fetch(query, guild_id)
 
     async def _get_streamer_data(self, broadcaster: str) -> Dict:
-        """ Helper to get the streamer data based on name. """
+        """Helper to get the streamer data based on name."""
         headers = await self._gen_headers()
         async with self.bot.session.get(
             self.user_endpoint, headers=headers, params={"login": broadcaster}
@@ -141,7 +141,7 @@ class Twitch(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild) -> None:
-        """ Let's not post streamers to dead guilds. """
+        """Let's not post streamers to dead guilds."""
         streamer_query = """ DELETE FROM twitchtable WHERE guild_id = $1; """
         clip_query = """ DELETE FROM twitchcliptable WHERE guild_id = $1; """
         await self.bot.pool.execute(streamer_query, guild.id)
@@ -149,14 +149,14 @@ class Twitch(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def twitch(self, ctx: commands.Context) -> Optional[discord.Message]:
-        """ Twitch main command. """
+        """Twitch main command."""
         if not ctx.invoked_subcommand:
             return await ctx.send("You require more arguments for this command.")
 
     @twitch.command(hidden=True)
     @commands.is_owner()
     async def streamdb(self, ctx: commands.Context) -> discord.Message:
-        """. """
+        """."""
         headers = await self._gen_headers()
         query = """ SELECT * FROM twitchcliptable; """
         results = await self.bot.pool.fetch(query)
@@ -223,7 +223,7 @@ class Twitch(commands.Cog):
     async def add_streamer(
         self, ctx: commands.Context, name: str, channel: discord.TextChannel = None
     ) -> Union[discord.Reaction, discord.Message]:
-        """ Add a streamer to the database for polling. """
+        """Add a streamer to the database for polling."""
         channel = channel or ctx.channel
         results = await self._get_streamers(name, ctx.guild.id)
 
@@ -242,7 +242,7 @@ class Twitch(commands.Cog):
 
     @add_streamer.before_invoke
     async def stream_notification_check(self, ctx: commands.Context) -> None:
-        """ We're gonna check if they have X streams already. """
+        """We're gonna check if they have X streams already."""
         query = "SELECT * FROM twitchtable WHERE guild_id = $1;"
         results = await self.bot.pool.fetch(query, ctx.guild.id)
 
@@ -256,7 +256,7 @@ class Twitch(commands.Cog):
     async def remove_streamer(
         self, ctx: commands.Context, name: str
     ) -> Union[discord.Reaction, discord.Message]:
-        """ Add a streamer to the database for polling. """
+        """Add a streamer to the database for polling."""
         results = await self._get_streamers(name, ctx.guild.id)
         if not results:
             return await ctx.send("This streamer is not in the monitored list.")
@@ -270,7 +270,7 @@ class Twitch(commands.Cog):
     async def clear_streams(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> Union[discord.Reaction, discord.Message]:
-        """ Clears all streams for the context channel or passed channel. """
+        """Clears all streams for the context channel or passed channel."""
         channel = channel or ctx.channel
         query = "DELETE FROM twitchtable WHERE channel_id = $1 AND guild_id = $2;"
         confirm = await ctx.prompt(
@@ -286,7 +286,7 @@ class Twitch(commands.Cog):
 
     @twitch.group(name="clips", aliases=["clip"], invoke_without_command=True)
     async def twitch_clips(self, ctx):
-        """ Main clip command. """
+        """Main clip command."""
         if not ctx.invoked_subcommand:
             return await ctx.send_help(ctx.command)
 
@@ -299,7 +299,7 @@ class Twitch(commands.Cog):
         *,
         channel: discord.TextChannel = None,
     ) -> discord.Reaction:
-        """ Add a clip section to monitor. """
+        """Add a clip section to monitor."""
         try:
             broadcaster_data = await self._get_streamer_data(broadcaster)
         except KeyError:
@@ -330,7 +330,7 @@ class Twitch(commands.Cog):
     async def remove_clips(
         self, ctx: commands.Context, *, broadcaster: str
     ) -> discord.Reaction:
-        """ Remove clips from monitoring. """
+        """Remove clips from monitoring."""
         broadcaster_data = await self._get_streamer_data(broadcaster)
 
         if not broadcaster_data:
@@ -351,7 +351,7 @@ class Twitch(commands.Cog):
     async def clear_clips(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> discord.Reaction:
-        """ Clear the clips, let's check for approval though. """
+        """Clear the clips, let's check for approval though."""
         channel = channel or ctx.channel
         response = await ctx.prompt(
             f"Are you sure you wish to clear the clip monitoring for {channel.mention}?"
@@ -369,7 +369,7 @@ class Twitch(commands.Cog):
 
     @add_clips.before_invoke
     async def clip_notification_check(self, ctx: commands.Context) -> None:
-        """ We're gonna check if they have X streams already. """
+        """We're gonna check if they have X streams already."""
         query = "SELECT * FROM twitchcliptable WHERE guild_id = $1;"
         results = await self.bot.pool.fetch(query, ctx.guild.id)
         if len(results) >= self.streamer_limit:
@@ -386,7 +386,7 @@ class Twitch(commands.Cog):
     async def twitch_error(
         self, ctx: commands.Context, error: Exception
     ) -> discord.Message:
-        """ Local error handler for primary Twitch commands. """
+        """Local error handler for primary Twitch commands."""
         error = getattr(error, "original", error)
         if isinstance(error, commands.MissingPermissions):
             return await ctx.send(
@@ -405,7 +405,7 @@ class Twitch(commands.Cog):
 
     @tasks.loop(minutes=2.0)
     async def get_streamers(self) -> None:
-        """ Task loop to get the active streamers in the db and post to specified channels. """
+        """Task loop to get the active streamers in the db and post to specified channels."""
         headers = await self._gen_headers()
         query = """ SELECT * FROM twitchtable; """
         results = await self.bot.pool.fetch(query)
@@ -498,7 +498,7 @@ class Twitch(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def get_clips(self) -> None:
-        """ Let's check every 2 minutes for clips, eh? """
+        """Let's check every 2 minutes for clips, eh?"""
         headers = await self._gen_headers()
         query = """ SELECT * FROM twitchcliptable; """
         results = await self.bot.pool.fetch(query)
@@ -557,13 +557,13 @@ class Twitch(commands.Cog):
     @get_streamers.before_loop
     @get_clips.before_loop
     async def twitch_before(self) -> None:
-        """ Quickly before the loop... """
+        """Quickly before the loop..."""
         await self.bot.wait_until_ready()
 
     @get_streamers.error
     @get_clips.error
     async def streamers_error(self, error) -> Union[discord.Message, str]:
-        """ On task.loop exception. """
+        """On task.loop exception."""
         stats = self.bot.get_cog("Stats")
         tb_str = "".join(
             traceback.format_exception(type(error), error, error.__traceback__, 4)
@@ -580,11 +580,11 @@ class Twitch(commands.Cog):
 
 
 def cog_unload(self) -> None:
-    """ When the cog is unloaded, we wanna kill the task. """
+    """When the cog is unloaded, we wanna kill the task."""
     self.get_streamers.cancel()
     self.get_clips.cancel()
 
 
 def setup(bot: commands.Bot):
-    """ Setup the cog & extension. """
+    """Setup the cog & extension."""
     bot.add_cog(Twitch(bot))

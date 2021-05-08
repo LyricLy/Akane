@@ -17,7 +17,7 @@ from utils.paginator import RoboPages
 
 
 class RequiresSnipe(commands.CheckFailure):
-    """ Requires snipe configured. """
+    """Requires snipe configured."""
 
 
 class SnipePageSource(menus.ListPageSource):
@@ -101,7 +101,7 @@ def requires_snipe():
 
 
 class Snipe(commands.Cog):
-    """ Sniping cog. """
+    """Sniping cog."""
 
     def __init__(self, bot):
         self.bot = bot
@@ -297,7 +297,7 @@ class Snipe(commands.Cog):
     async def show_snipes(
         self, ctx, amount: int = 5, channel: discord.TextChannel = None
     ):
-        """ Select the last N snipes from this channel. """
+        """Select the last N snipes from this channel."""
         if channel:
             if not ctx.author.guild_permissions.manage_messages:
                 return await ctx.send(
@@ -330,7 +330,7 @@ class Snipe(commands.Cog):
     @commands.has_guild_permissions(manage_messages=True)
     @show_snipes.command(name="setup")
     async def set_up_snipe(self, ctx):
-        """ Opts in to the snipe capabilities of Akane. Requires Manage Messages. """
+        """Opts in to the snipe capabilities of Akane. Requires Manage Messages."""
         self.get_snipe_config.invalidate(self, ctx.guild.id)
 
         config = await self.get_snipe_config(ctx.guild.id, connection=ctx.db)
@@ -349,7 +349,7 @@ class Snipe(commands.Cog):
     @commands.has_guild_permissions(manage_messages=True)
     @show_snipes.command(name="destroy", aliases=["desetup"])
     async def snipe_desetup(self, ctx):
-        """ remove the ability to snipe here. """
+        """remove the ability to snipe here."""
         config = await self.get_snipe_config(ctx.guild.id, connection=ctx.db)
         if not config.configured:
             return await ctx.send("Sniping is not enabled for this guild.")
@@ -372,7 +372,7 @@ class Snipe(commands.Cog):
     async def snipe_optout(
         self, ctx, entity: typing.Union[discord.Member, discord.TextChannel] = None
     ):
-        """ Let's toggle it for this channel / member / self. """
+        """Let's toggle it for this channel / member / self."""
         config = await self.get_snipe_config(ctx.guild.id, connection=ctx.db)
         if isinstance(entity, (discord.Member, discord.TextChannel)):
             if not ctx.author.guild_permissions.manage_messages:
@@ -403,7 +403,7 @@ class Snipe(commands.Cog):
     async def snipe_optin(
         self, ctx, entity: typing.Union[discord.Member, discord.TextChannel] = None
     ):
-        """ Let's toggle it for this channel / member / self. """
+        """Let's toggle it for this channel / member / self."""
         config = await self.get_snipe_config(ctx.guild.id, connection=ctx.db)
         if isinstance(entity, (discord.Member, discord.TextChannel)):
             if not ctx.author.guild_permissions.manage_messages:
@@ -434,7 +434,7 @@ class Snipe(commands.Cog):
     async def show_edit_snipes(
         self, ctx, amount: int = 5, channel: discord.TextChannel = None
     ):
-        """ Edit snipes, shows the last N from. Must have manage_messages to choose a different channel. """
+        """Edit snipes, shows the last N from. Must have manage_messages to choose a different channel."""
         # let's check that amount is an int, clear inputs
         if channel:
             if not ctx.author.guild_permissions.manage_messages:
@@ -513,7 +513,7 @@ class Snipe(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def snipe_delete_update(self):
-        """ Batch updates for the snipes. """
+        """Batch updates for the snipes."""
         await self.bot.wait_until_ready()
         query = """
                 INSERT INTO snipe_deletes (user_id, guild_id, channel_id, message_id, message_content, attachment_urls, delete_time)
@@ -528,7 +528,7 @@ class Snipe(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def snipe_edit_update(self):
-        """ Batch updates for the snipes. """
+        """Batch updates for the snipes."""
         await self.bot.wait_until_ready()
         query = """
                 INSERT INTO snipe_edits (user_id, guild_id, channel_id, message_id, before_content, after_content, edited_time, jump_url)
