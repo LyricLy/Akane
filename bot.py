@@ -13,8 +13,7 @@ import logging
 import sys
 import traceback
 from collections import Counter, deque
-from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple,
-                    Union)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import aiohttp
 import discord
