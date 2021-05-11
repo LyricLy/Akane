@@ -27,7 +27,7 @@ from utils.paginator import RoboPages
 if TYPE_CHECKING:
     from bot import Akane
 
-SIX_DIGITS = re.compile(r"\{(\d{6})\}")
+SIX_DIGITS = re.compile(r"\{(\d{5,7})\}")
 RATING = {"e": "explicit", "q": "questionable", "s": "safe"}
 Booru = namedtuple("Booru", "auth endpoint")
 
@@ -65,6 +65,12 @@ class NHentaiEmbed(discord.Embed):
         self.add_field(name="# of favourites", value=gallery.favourites)
         self.set_image(url=gallery.cover.url)
 
+        fmt = "Top 5 tags (in order of count):-\n"
+        tags = sorted(gallery.tags, key=lambda t: t.count)
+        fmt2 = ", ".join(tag.name.title() for tag in tags[:5])
+
+        self.description = fmt + fmt2
+
         return self
 
 
@@ -78,6 +84,9 @@ class BooruConfigTable(db.Table, table_name="booru_config"):
 
 class BooruConfig:
     """Config object per guild."""
+
+    blacklist: set[str]
+    auto_six_digits: bool
 
     __slots__ = ("guild_id", "bot", "record", "blacklist", "auto_six_digits")
 
@@ -515,6 +524,19 @@ class Lewd(commands.Cog):
     @nhentai.command(name="toggle")
     @checks.has_guild_permissions(manage_messages=True)
     async def nhentai_toggle(self, ctx: Context) -> None:
+        """
+        This command will toggle the auto parsing of NHentai IDs in messages in the form of:-
+        `{123456}`
+
+        Criteria for parsing:
+        - Cannot be done in DM.
+        - Must be in an NSFW channel.
+        - Must be a user or bot that posts it, no webhooks.
+        - If the ID does not match a gallery, it will not respond.
+
+        Toggle will do as it says, switch between True and False. Only when it is True will it parse and respond.
+        The reaction added will tell you if it is on (check mark), or off (cross).
+        """
         config: BooruConfig = await self.get_booru_config(ctx.guild.id)
         if not config:
             return await ctx.send("No recorded config for this guild.")
@@ -523,13 +545,16 @@ class Lewd(commands.Cog):
 
         query = """
                 --begin-sql
-                UPDATE gelbooru_config
-                SET auto_six_digits = $2
-                WHERE guild_id = $1;
+                INSERT INTO gelbooru_config (guild_id, blacklist, auto_six_digits)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (guild_id)
+                DO UPDATE
+                SET auto_six_digits = $4
+                WHERE gelbooru_config.guild_id = $1;
                 """
-        await ctx.bot.pool.execute(query, ctx.guild.id, not enabled)
+        await ctx.bot.pool.execute(query, ctx.guild.id, [], True, not enabled)
         self.get_booru_config.invalidate(self, ctx.guild.id)
-        await ctx.message.add_reaction(ctx.bot.emoji[True])
+        await ctx.message.add_reaction(ctx.bot.emoji[not enabled])
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -548,11 +573,19 @@ class Lewd(commands.Cog):
 
         digits = int(match[1])
 
-        gallery: Optional[
-            nhentaio.Gallery
-        ] = await self.bot.hentai_client.fetch_gallery(digits)
+        try:
+            gallery: Optional[
+                nhentaio.Gallery
+            ] = await self.bot.hentai_client.fetch_gallery(digits)
+        except nhentaio.errors.NhentaiError:
+            return
         if not gallery:
             return
+
+        tags = set([tag.name for tag in gallery.tags])
+        if bl := config.blacklist & tags:
+            clean = "|".join(bl)
+            return await message.reply(f"This gallery has blacklisted tags: `{clean}`.")
 
         embed = NHentaiEmbed.from_gallery(gallery)
         await message.reply(embed=embed)

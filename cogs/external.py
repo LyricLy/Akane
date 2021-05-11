@@ -3,10 +3,13 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 """
+from __future__ import annotations
 
 import json
 import textwrap
 from datetime import datetime
+from typing import Union, Optional, TYPE_CHECKING
+from utils.context import Context
 
 import discord
 from aiohttp import ContentTypeError
@@ -14,6 +17,9 @@ from currency_converter import CurrencyConverter
 from discord.ext import commands
 
 from utils import cache, db, time
+
+if TYPE_CHECKING:
+    from bot import Akane
 
 
 class Feeds(db.Table):
@@ -26,7 +32,7 @@ class Feeds(db.Table):
 class PypiObject:
     """Pypi objects."""
 
-    def __init__(self, name: str, pypi_dict: dict):
+    def __init__(self, name: str, pypi_dict: dict[str, Optional[Union[int, str]]]):
         self.url = f"https://pypi.org/project/{name}/"
         self.module_name = pypi_dict["info"]["name"]
         self.module_author = pypi_dict["info"]["author"]
@@ -73,15 +79,17 @@ class PypiObject:
 class External(commands.Cog):
     """External API stuff."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: Akane):
         self.bot = bot
         self.headers = {"User-Agent": "Akane Discord bot."}
         self.currency_conv = CurrencyConverter()
-        self.currency_codes = json.loads(open("utils/currency_codes.json").read())
+        self.currency_codes: dict[str, str] = json.loads(
+            open("utils/currency_codes.json").read()
+        )
 
     @commands.command()
     @commands.cooldown(1, 10, commands.BucketType.user)
-    async def pypi(self, ctx, *, package_name: str):
+    async def pypi(self, ctx: Context, *, package_name: str):
         """Searches PyPi for a Package."""
         async with self.bot.session.get(
             f"https://pypi.org/pypi/{package_name}/json", headers=self.headers
@@ -138,7 +146,9 @@ class External(commands.Cog):
         return await ctx.send(embed=embed)
 
     @commands.command()
-    async def currency(self, ctx, amount: float, source: str, dest: str):
+    async def currency(
+        self, ctx: Context, amount: float, source: str, dest: str
+    ) -> None:
         """Currency converter."""
         source = source.upper()
         dest = dest.upper()
@@ -149,14 +159,19 @@ class External(commands.Cog):
         await ctx.send(f"{prefix}{round(new_amount, 2):.2f}")
 
     @pypi.error
-    async def pypi_error(self, ctx, error):
+    async def pypi_error(self, ctx: Context, error: commands.CommandError) -> None:
         error = getattr(error, "original", error)
         if isinstance(error, ContentTypeError):
             error.handled = True
             return await ctx.send("That package doesn't exist on PyPi.")
 
     @cache.cache()
-    async def get_feeds(self, channel_id, *, connection=None):
+    async def get_feeds(
+        self,
+        channel_id: int,
+        *,
+        connection: Optional[Union[asyncpg.Connection, asyncpg.Pool]] = None,
+    ) -> dict[str, str]:
         con = connection or self.bot.pool
         query = "SELECT name, role_id FROM feeds WHERE channel_id=$1;"
         feeds = await con.fetch(query, channel_id)
@@ -164,7 +179,7 @@ class External(commands.Cog):
 
     @commands.group(name="feeds", invoke_without_command=True)
     @commands.guild_only()
-    async def _feeds(self, ctx):
+    async def _feeds(self, ctx: Context) -> None:
         """Shows the list of feeds that the channel has.
         A feed is something that users can opt-in to
         to receive news about a certain feed by running
@@ -184,7 +199,7 @@ class External(commands.Cog):
     @_feeds.command(name="create")
     @commands.has_permissions(manage_roles=True)
     @commands.guild_only()
-    async def feeds_create(self, ctx, *, name: str):
+    async def feeds_create(self, ctx: Context, *, name: str) -> None:
         """Creates a feed with the specified name.
         You need Manage Roles permissions to create a feed.
         """
@@ -212,7 +227,7 @@ class External(commands.Cog):
     @_feeds.command(name="delete", aliases=["remove"])
     @commands.has_permissions(manage_roles=True)
     @commands.guild_only()
-    async def feeds_delete(self, ctx, *, feed: str):
+    async def feeds_delete(self, ctx: Context, *, feed: str) -> None:
         """Removes a feed from the channel.
         This will also delete the associated role so this
         action is irreversible.

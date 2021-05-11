@@ -2112,7 +2112,7 @@ class Mod(commands.Cog):
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("Missing a duration to selfmute for.")
 
-    @commands.command(enabled=False)
+    @commands.command(enabled=True)
     @commands.guild_only()
     @commands.bot_has_guild_permissions(ban_members=True)
     async def selfban(self, ctx):

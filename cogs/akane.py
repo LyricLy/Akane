@@ -10,9 +10,8 @@ import asyncio
 import datetime
 import timeit
 import traceback
-from collections import namedtuple
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import NamedTuple, TYPE_CHECKING, Optional, Tuple
 
 import discord
 from discord.ext import commands, tasks
@@ -21,7 +20,10 @@ from jishaku.codeblocks import codeblock_converter
 from utils.context import Context
 from utils.formats import to_codeblock
 
-ProfileState = namedtuple("ProfileState", "path name")
+
+class ProfileState(NamedTuple):
+    path: str
+    name: str
 
 
 if TYPE_CHECKING:
@@ -61,6 +63,8 @@ class AkaneCore(commands.Cog, name="Akane"):
     @commands.group(invoke_without_command=True)
     async def akane(self, ctx: Context) -> None:
         """This is purely for subcommands."""
+        if not ctx.invoked_subcommand:
+            return await ctx.send_help(ctx.command)
 
     @akane.command()
     @commands.is_owner()

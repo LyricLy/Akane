@@ -888,7 +888,7 @@ class Tags(commands.Cog):
             return await ctx.send(e)
 
         first_step = discord.utils.escape_markdown(tag["content"])
-        await ctx.safe_send(first_step.replace("<", "\\<"), escape_mentions=False)
+        await ctx.send(first_step.replace("<", "\\<"))
 
     @tag.command(name="list")
     @suggest_box()

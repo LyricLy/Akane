@@ -36,7 +36,7 @@ class LazyEntity:
         self.guild = guild
         self._cache = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self._cache:
             return self._cache
 

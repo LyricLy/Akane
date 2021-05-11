@@ -11,8 +11,7 @@ import copy
 import io
 import time
 import traceback
-from email.generator import Generator
-from typing import TYPE_CHECKING, Optional, Set, Union
+from typing import TYPE_CHECKING, Optional, Set, Union, Generator, Any
 
 import discord
 from discord.ext import commands
@@ -59,7 +58,7 @@ class PerformanceMocker:
     def __repr__(self) -> str:
         return "<PerformanceMocker>"
 
-    def __await__(self) -> Generator:
+    def __await__(self) -> Generator[Any, None, Any]:
         future = self.loop.create_future()
         future.set_result(self)
         return future.__await__()
@@ -80,7 +79,14 @@ class PerformanceMocker:
 class GlobalChannel(commands.Converter):
     """GlobalChannel converter object."""
 
-    async def convert(self, ctx, argument):
+    async def convert(
+        self, ctx: Context, argument: str
+    ) -> Union[
+        discord.TextChannel,
+        discord.VoiceChannel,
+        discord.StageChannel,
+        discord.CategoryChannel,
+    ]:
         """Perform conversion."""
         try:
             return await commands.TextChannelConverter().convert(ctx, argument)
@@ -106,7 +112,6 @@ class Admin(commands.Cog):
 
     def __init__(self, bot: Akane) -> None:
         self.bot = bot
-        self._last_result = None
         self.my_guilds: Set[int] = {705500489248145459, 766520806289178646}
 
     def cleanup_code(self, content: str) -> str:
@@ -120,7 +125,7 @@ class Admin(commands.Cog):
     async def cog_check(self, ctx: Context) -> bool:
         return await self.bot.is_owner(ctx.author)
 
-    def get_syntax_error(self, err: Exception) -> str:
+    def get_syntax_error(self, err: SyntaxError) -> str:
         """Grabs the syntax error."""
         if err.text is None:
             return f"```py\n{err.__class__.__name__}: {err}\n```"
@@ -157,7 +162,7 @@ class Admin(commands.Cog):
         else:
             await ctx.message.add_reaction(self.bot.emoji[True])
 
-    @commands.group(name="reload", invoke_without_command=True)
+    @commands.command(name="reload")
     async def _reload(self, ctx: Context, *, module: str) -> None:
         """Reloads a module."""
         module = f"cogs.{module}"
@@ -171,8 +176,8 @@ class Admin(commands.Cog):
         else:
             await ctx.message.add_reaction(self.bot.emoji[True])
 
-    @commands.command()
-    async def sql(self, ctx: Context, *, query: str) -> Optional[discord.Message]:
+    @commands.group(invoke_without_command=True)
+    async def sql(self, ctx: Context, *, query: str) -> None:
         """Run some SQL."""
         query = self.cleanup_code(query)
 
@@ -211,7 +216,7 @@ class Admin(commands.Cog):
         else:
             await ctx.send(fmt)
 
-    @commands.command()
+    @sql.command(name="table")
     async def sql_table(self, ctx: Context, *, table_name: str) -> None:
         """Runs a query describing the table schema."""
         query = """SELECT column_name, data_type, column_default, is_nullable
