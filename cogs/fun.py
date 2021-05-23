@@ -485,7 +485,7 @@ class Fun(commands.Cog):
                 title=f"{plural(len(winners)):Winner}", colour=discord.Colour.random()
             )
             embed.description = "\n".join(
-                f"{idx}: {person.mention} - {time:.4f} seconds for {amount / time * 60:.2f}WPM"
+                f"{idx}: {person.mention} - {time:.4f} seconds for {len(randomized_words) / time * 12:.2f}WPM"
                 for idx, (person, time) in enumerate(winners.items(), start=1)
             )
 

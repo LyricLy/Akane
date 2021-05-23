@@ -560,7 +560,7 @@ class Nihongo(commands.Cog):
                 title=f"{plural(len(winners)):Winner}", colour=discord.Colour.random()
             )
             embed.description = "\n".join(
-                f"{idx}: {person.mention} - {time:.4f} seconds for {amount / time * 5:.2f}CPM"
+                f"{idx}: {person.mention} - {time:.4f} seconds for {amount / time * 60:.2f} kana per minute"
                 for idx, (person, time) in enumerate(winners.items(), start=1)
             )
 
